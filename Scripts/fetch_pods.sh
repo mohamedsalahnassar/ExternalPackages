@@ -15,6 +15,7 @@ VERBOSE=0
 UNSHALLOW=0
 KEEP_ONLY_REPOS=1
 FINAL_DIR_NAME="repos"
+NO_REPO_UPDATE=0
 
 log(){ printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 die(){ printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -27,6 +28,7 @@ while [[ $# -gt 0 ]]; do
     --unshallow) UNSHALLOW=1; shift;;
     --patch-downloader-git) MODE="patchgit"; shift;;
     --restore-downloader-git) ruby "$PATCHER_DL_GIT" restore --print-path; exit 0;;
+    --no-repo-update) NO_REPO_UPDATE=1; shift;;
     --keep-all) KEEP_ONLY_REPOS=0; shift;;
     --final-dir-name) FINAL_DIR_NAME="$2"; shift 2;;
     *) die "Unknown arg: $1";;
@@ -62,15 +64,17 @@ else
   RUBYOPT_OVERRIDE=""
 fi
 
-CP_HOME_DIR="$DEST/_cp_home"
 CP_GIT_TMP_ROOT="$DEST/tmp_clones/_tmp"
 
+POD_INSTALL_ARGS=()
+[[ $VERBOSE -eq 1 ]] && POD_INSTALL_ARGS+=("--verbose")
+[[ $NO_REPO_UPDATE -eq 1 ]] && POD_INSTALL_ARGS+=("--no-repo-update")
+
 env \
-  CP_HOME_DIR="$CP_HOME_DIR" \
   CP_GIT_TMP_ROOT="$CP_GIT_TMP_ROOT" \
   CP_GIT_SHALLOW="$([[ $UNSHALLOW -eq 1 ]] && echo 0 || echo 1)" \
   RUBYOPT="$RUBYOPT_OVERRIDE" \
-  pod install $([[ $VERBOSE -eq 1 ]] && echo --verbose) 2>&1 | tee "$DEST/pod_install.log"
+  pod install "${POD_INSTALL_ARGS[@]}" 2>&1 | tee "$DEST/pod_install.log"
 STATUS=${PIPESTATUS[0]}
 
 popd >/dev/null
@@ -91,7 +95,7 @@ done
 
 if [[ $KEEP_ONLY_REPOS -eq 1 ]]; then
   echo "[INFO] Cleaning up non-essential files..."
-  rm -rf "$DEST/tmp_clones" "$DEST/_cp_home" "$DEST/Pods" "$DEST/workspace" "$DEST/cache-list.txt" "$DEST/pods_list.csv"
+  rm -rf "$DEST/tmp_clones" "$DEST/Pods" "$DEST/workspace" "$DEST/cache-list.txt" "$DEST/pods_list.csv"
   rm -f "$DEST/pod_install.log"
 fi
 

@@ -18,3 +18,9 @@ cd cocoapods_capture_v25
 ./Scripts/fetch_pods.sh --patch-downloader-git --podfile-dir ./Sample --dest ./output --verbose
 ```
 Cloned repos end up in `DEST/repos/`. Add `CP_GIT_SHALLOW=0` to disable shallow clones.
+
+### Additional options
+
+- `--no-repo-update` &ndash; forwards the flag to `pod install` so CocoaPods skips updating the specs repos.
+
+The script leaves the CocoaPods specs repositories in their default location; only the library clone directories are captured via the patched `git.rb`.

@@ -1,23 +1,20 @@
-# CocoaPods Clone Capture (v24)
+# CocoaPods Clone Capture (v25)
 
-**Autonomous detection** of the in-place patch target:
-- Detects CocoaPods version via `pod --version`
-- Searches Homebrew Cellar for that version first, then `opt/`
-- Falls back to RubyGems discovery (and common system gem paths)
-- You can still override with `CP_DL_GIT_RB=/full/path/to/git.rb`
+**Zero-config detection** for in-place patch:
+- Scans Homebrew **Cellar** for the exact `pod --version`, then `opt/cocoapods/libexec`, then any Cellar.
+- Searches under `libexec/**` patterns that match both `gems/` and `lib/ruby/gems/` layouts.
+- Falls back to RubyGems discovery.
+- If still not found, the runner **automatically falls back to the RUBYOPT (non-invasive) mode** so your run succeeds.
 
 ## Usage
 ```bash
-unzip cocoapods_capture_v24.zip
-cd cocoapods_capture_v24
+unzip cocoapods_capture_v25.zip
+cd cocoapods_capture_v25
 
 # Non-invasive (recommended)
 ./Scripts/fetch_pods.sh --podfile-dir ./Sample --dest ./output --verbose
 
-# In-place patch (auto-detect target; backups & restores)
+# In-place patch attempt (auto-detect; falls back to RUBYOPT if not found)
 ./Scripts/fetch_pods.sh --patch-downloader-git --podfile-dir ./Sample --dest ./output --verbose
-# manual restore:
-./Scripts/fetch_pods.sh --restore-downloader-git
 ```
-
-Cloned repos end up in `DEST/repos/`. Set `CP_GIT_SHALLOW=0` to disable shallow clones up front.
+Cloned repos end up in `DEST/repos/`. Add `CP_GIT_SHALLOW=0` to disable shallow clones.

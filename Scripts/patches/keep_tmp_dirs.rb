@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 require 'fileutils'
 require 'pathname'
-begin
-  require 'cocoapods'
-rescue LoadError
-end
+begin; require 'cocoapods'; rescue LoadError; end
 module Pod
   module Downloader
     class Cache

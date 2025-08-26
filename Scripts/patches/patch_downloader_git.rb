@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
-# In-place patcher for cocoapods-downloader's git.rb
-# **Autonomous detection** of Homebrew/gem install and versions.
+# In-place patcher for cocoapods-downloader's git.rb with **robust auto-detection**.
 require 'fileutils'
 require 'open3'
 
@@ -19,31 +18,56 @@ def pods_version
   v.empty? ? nil : v.strip
 end
 
-def brew_prefixes
-  list = []
-  bp = sh('brew --prefix 2>/dev/null')
-  list << bp unless bp.empty?
-  list += %w[/opt/homebrew /usr/local]
-  list.uniq.select { |p| File.directory?(p) }
+def brew_prefix(name=nil)
+  p = sh("brew --prefix #{name} 2>/dev/null")
+  return p unless p.empty?
+  sh('brew --prefix 2>/dev/null')
 end
 
-def find_downloader_git_by_versions
-  pv = pods_version
-  brew_prefixes.each do |root|
-    # Prefer exact CocoaPods version cellar if available
-    if pv
-      Dir.glob("#{root}/Cellar/cocoapods/#{pv}*/libexec/gems/**/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb") do |p|
-        return p if File.exist?(p)
+def gather_libexec_roots
+  roots = []
+  # Homebrew specific locations
+  bp = brew_prefix('cocoapods')
+  roots << File.join(bp, 'libexec') unless bp.empty?
+  # explicit common roots
+  ['/opt/homebrew','/usr/local'].each do |base|
+    ['opt/cocoapods/libexec','Cellar/cocoapods'].each do |suffix|
+      path = File.join(base, suffix)
+      if File.basename(path) == 'cocoapods'
+        # cellar root; we will append version below
+        if File.directory?(path)
+          pv = pods_version
+          if pv
+            Dir.glob(File.join(path, "#{pv}*", 'libexec')).each { |p| roots << p }
+          end
+          Dir.glob(File.join(path, '*', 'libexec')).each { |p| roots << p }
+        end
+      else
+        roots << path if File.directory?(path)
       end
     end
-    # Fallback: opt symlink and any downloader version
-    Dir.glob("#{root}/opt/cocoapods/libexec/gems/**/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb") do |p|
+  end
+  roots.uniq.select { |p| File.directory?(p) }
+end
+
+def search_libexec_for_downloader(libexec_root)
+  globs = [
+    'gems/**/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb',
+    'lib/ruby/gems/**/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb',
+    '**/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb'
+  ]
+  globs.each do |g|
+    Dir.glob(File.join(libexec_root, g)).sort.reverse.each do |p|
       return p if File.exist?(p)
     end
-    # Last resort: any cellar version
-    Dir.glob("#{root}/Cellar/cocoapods/*/libexec/gems/**/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb").sort.reverse.each do |p|
-      return p if File.exist?(p)
-    end
+  end
+  nil
+end
+
+def find_downloader_git_by_homebrew
+  gather_libexec_roots.each do |root|
+    p = search_libexec_for_downloader(root)
+    return p if p
   end
   nil
 end
@@ -55,7 +79,6 @@ def find_downloader_git_by_rubygems
     return File.join(spec.gem_dir, 'lib', 'cocoapods-downloader', 'git.rb') if spec
   rescue
   end
-  # Common system gem paths
   paths = []
   paths += Dir.glob("/Library/Ruby/Gems/*/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb")
   paths += Dir.glob("/System/Library/Frameworks/Ruby.framework/Versions/*/usr/lib/ruby/gems/*/gems/cocoapods-downloader-*/lib/cocoapods-downloader/git.rb")
@@ -66,23 +89,20 @@ def find_downloader_git_by_rubygems
     end
   rescue
   end
-  paths.uniq.sort_by { |p| File.mtime(p) rescue Time.at(0) }.reverse.first
+  paths.uniq.sort.reverse.first
 end
 
 def locate_target
-  # 1) explicit override
   if ENV['CP_DL_GIT_RB'] && !ENV['CP_DL_GIT_RB'].empty?
     path = ENV['CP_DL_GIT_RB']
     return path if File.exist?(path)
     abort "CP_DL_GIT_RB points to non-existent path: #{path}"
   end
-  # 2) Homebrew using versions
-  path = find_downloader_git_by_versions
+  path = find_downloader_git_by_homebrew
   return path if path
-  # 3) RubyGems fallback
   path = find_downloader_git_by_rubygems
   return path if path
-  abort "Could not locate cocoapods-downloader git.rb automatically."
+  nil
 end
 
 PATCH_START = "# MONKEY_GIT_KEEP_PATCH START"
@@ -131,10 +151,18 @@ RUBY
 end
 
 target = locate_target
-backup = target + '.bak.keep_tmp_git'
 
 case MODE
+when 'detect'
+  if target
+    puts target
+  else
+    STDERR.puts "Could not locate cocoapods-downloader git.rb automatically."
+    exit 2
+  end
 when 'apply'
+  abort "Could not locate cocoapods-downloader git.rb automatically." unless target
+  backup = target + '.bak.keep_tmp_git'
   original = File.read(target)
   if original.include?(PATCH_START)
     puts "Already patched: #{target}"
@@ -146,6 +174,8 @@ when 'apply'
   puts "Patched: #{target} (backup at #{backup})"
   puts target if PRINT_PATH
 when 'restore'
+  abort "No target specified and no backup path provided." unless target
+  backup = target + '.bak.keep_tmp_git'
   if File.exist?(backup)
     FileUtils.mv(backup, target, force: true)
     puts "Restored: #{target}"
@@ -154,8 +184,6 @@ when 'restore'
     puts "No backup found at #{backup}"
     puts target if PRINT_PATH
   end
-when 'detect'
-  puts locate_target
 else
   abort "Unknown mode: #{MODE} (use apply|restore|detect)"
 end

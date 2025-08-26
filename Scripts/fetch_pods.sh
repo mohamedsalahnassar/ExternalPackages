@@ -49,13 +49,17 @@ if [[ "$MODE" == "patchgit" ]]; then
   DETECTED="$(ruby "$PATCHER_DL_GIT" detect || true)"
   if [[ -n "$DETECTED" ]]; then
     log "Detected git.rb: $DETECTED"
+    ruby "$PATCHER_DL_GIT" apply --print-path
   else
-    log "Detector could not find git.rb automatically; consider setting CP_DL_GIT_RB"
+    log "Detector could not find git.rb automatically. Falling back to RUBYOPT patch for this run."
+    MODE="rubypre"
   fi
-  ruby "$PATCHER_DL_GIT" apply --print-path
-  RUBYOPT_OVERRIDE=""
-else
+fi
+
+if [[ "$MODE" == "rubypre" ]]; then
   RUBYOPT_OVERRIDE="-r$PATCH_MONKEY_GIT -r$PATCH_KEEP_TMP"
+else
+  RUBYOPT_OVERRIDE=""
 fi
 
 CP_HOME_DIR="$DEST/_cp_home"
@@ -72,7 +76,6 @@ STATUS=${PIPESTATUS[0]}
 popd >/dev/null
 
 if [[ $STATUS -ne 0 ]]; then
-  [[ "$MODE" == "patchgit" ]] && ruby "$PATCHER_DL_GIT" restore --print-path || true
   die "pod install failed. See $DEST/pod_install.log"
 fi
 
@@ -90,11 +93,6 @@ if [[ $KEEP_ONLY_REPOS -eq 1 ]]; then
   echo "[INFO] Cleaning up non-essential files..."
   rm -rf "$DEST/tmp_clones" "$DEST/_cp_home" "$DEST/Pods" "$DEST/workspace" "$DEST/cache-list.txt" "$DEST/pods_list.csv"
   rm -f "$DEST/pod_install.log"
-fi
-
-if [[ "$MODE" == "patchgit" ]]; then
-  ruby "$PATCHER_DL_GIT" restore --print-path
-  echo "[INFO] Restored downloader git.rb"
 fi
 
 echo "Done. Repos live in: $DEST/$FINAL_DIR_NAME"

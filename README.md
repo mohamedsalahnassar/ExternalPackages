@@ -86,3 +86,13 @@ The script leaves the CocoaPods specs repositories in their default location; on
 ```
 
 These examples may be adapted to match your project paths. Repositories are written to `DEST/<final-dir-name>` (default `DEST/repos/`).
+
+## Listing external dependencies
+
+Use `Scripts/list_external_deps.sh` to print pods that come from external sources (e.g., git repositories) listed in a `Podfile.lock`:
+
+```bash
+./Scripts/list_external_deps.sh /path/to/Podfile.lock
+```
+
+Each line outputs the pod name, the source URL, and the tag/commit when available. Pods fetched from the central specs repo are ignored.

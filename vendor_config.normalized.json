@@ -1,0 +1,496 @@
+{
+  "shellPackageName": "ThirdPartyShell",
+  "vendorDir": "Vendor",
+  "packages": [
+    {
+      "name": "AEPAnalytics",
+      "currentVersion": "4.0.0",
+      "spmSupported": true,
+      "targetVersion": "4.0.0",
+      "git": "https://github.com/adobe/aepsdk-analytics-ios.git",
+      "products": [
+        "AEPAnalytics"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPAssurance",
+      "currentVersion": "4.1.1",
+      "spmSupported": null,
+      "targetVersion": "4.1.1",
+      "git": "https://github.com/adobe/aepsdk-assurance-ios.git",
+      "products": [
+        "AEPAssurance"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPCore",
+      "currentVersion": "4.2.2",
+      "spmSupported": true,
+      "targetVersion": "5.4.0",
+      "git": "https://github.com/adobe/aepsdk-core-ios.git",
+      "products": [
+        "AEPCore",
+        "AEPIdentity",
+        "AEPLifecycle",
+        "AEPServices",
+        "AEPSignal"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPEdge",
+      "currentVersion": "4.3.1",
+      "spmSupported": true,
+      "targetVersion": "4.3.1",
+      "git": "https://github.com/adobe/aepsdk-edge-ios.git",
+      "products": [
+        "AEPEdge"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPEdgeConsent",
+      "currentVersion": "4.0.0",
+      "spmSupported": true,
+      "targetVersion": "4.0.0",
+      "git": "https://github.com/adobe/aepsdk-edgeconsent-ios.git",
+      "products": [
+        "AEPEdgeConsent"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPEdgeIdentity",
+      "currentVersion": "4.0.0",
+      "spmSupported": true,
+      "targetVersion": "4.0.0",
+      "git": "https://github.com/adobe/aepsdk-edgeidentity-ios.git",
+      "products": [
+        "AEPEdgeIdentity"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPRulesEngine",
+      "currentVersion": "5.0.0",
+      "spmSupported": true,
+      "targetVersion": "5.0.0",
+      "git": "https://github.com/adobe/aepsdk-rulesengine-ios.git",
+      "products": [
+        "AEPRulesEngine"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "AEPTarget",
+      "currentVersion": "4.0.3",
+      "spmSupported": true,
+      "targetVersion": "4.0.3",
+      "git": "https://github.com/adobe/aepsdk-target-ios.git",
+      "products": [
+        "AEPTarget"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "Alamofire",
+      "currentVersion": "5.0.0",
+      "spmSupported": false,
+      "targetVersion": "5.0.0",
+      "git": "https://github.com/Alamofire/Alamofire.git",
+      "products": [
+        "Alamofire"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM introduced in 5.x"
+    },
+    {
+      "name": "AlamofireNetworkActivityLogger",
+      "currentVersion": "2.4.0",
+      "spmSupported": false,
+      "targetVersion": "3.4.0",
+      "git": "https://github.com/konkab/AlamofireNetworkActivityLogger.git",
+      "products": [
+        "AlamofireNetworkActivityLogger"
+      ],
+      "xcframeworks": [],
+      "notes": "Use a fork that supports SPM (e.g., konkab/AlamofireNetworkActivityLogger >=3.x), or replace with NetworkActivityLogger alternative."
+    },
+    {
+      "name": "AppDynamicsAgent",
+      "currentVersion": "2022.5.0",
+      "spmSupported": true,
+      "targetVersion": "2023.10.1",
+      "git": "https://github.com/CiscoDevNet/AppDynamicsAgent.git",
+      "products": [
+        "AppDynamicsAgent"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM added in 23.10.x"
+    },
+    {
+      "name": "BigInt",
+      "currentVersion": "5.2.0",
+      "spmSupported": true,
+      "targetVersion": "5.2.0",
+      "git": "https://github.com/attaswift/BigInt.git",
+      "products": [
+        "BigInt"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "CryptoSwift",
+      "currentVersion": "1.4.1",
+      "spmSupported": true,
+      "targetVersion": "1.4.1",
+      "git": "https://github.com/krzyzanowskim/CryptoSwift.git",
+      "products": [
+        "CryptoSwift"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "DGCharts",
+      "currentVersion": "5.0.0",
+      "spmSupported": true,
+      "targetVersion": "5.0.0",
+      "git": "https://github.com/danielgindi/Charts.git",
+      "products": [
+        "DGCharts"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM added around Charts/DGCharts 4.0.1"
+    },
+    {
+      "name": "DeviceKit",
+      "currentVersion": "5.5.0",
+      "spmSupported": true,
+      "targetVersion": "5.5.0",
+      "git": "https://github.com/devicekit/DeviceKit.git",
+      "products": [
+        "DeviceKit"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "Differentiator",
+      "currentVersion": "5.0.0",
+      "spmSupported": true,
+      "targetVersion": "5.0.0",
+      "git": "https://github.com/RxSwiftCommunity/RxDataSources.git",
+      "products": [
+        "Differentiator",
+        "RxDataSources"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "FirebaseABTesting",
+      "currentVersion": "8.9.0",
+      "spmSupported": null,
+      "targetVersion": "8.9.1",
+      "git": "https://github.com/firebase/firebase-ios-sdk.git",
+      "products": [
+        "FirebaseABTesting",
+        "FirebaseCore",
+        "FirebaseCrashlytics",
+        "FirebaseInstallations",
+        "FirebaseMessaging",
+        "FirebasePerformance",
+        "FirebaseRemoteConfig"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "FloatingPanel",
+      "currentVersion": "2.8.1",
+      "spmSupported": true,
+      "targetVersion": "2.8.1",
+      "git": "https://github.com/scenee/FloatingPanel.git",
+      "products": [
+        "FloatingPanel"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "GoogleDataTransport",
+      "currentVersion": "9.1.2",
+      "spmSupported": null,
+      "targetVersion": "9.1.2",
+      "git": "https://github.com/google/GoogleDataTransport.git",
+      "products": [
+        "GoogleDataTransport"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "GoogleMaps",
+      "currentVersion": "8.3.1",
+      "spmSupported": true,
+      "targetVersion": "8.3.1",
+      "git": "https://github.com/googlemaps/ios-maps-sdk.git",
+      "products": [
+        "GoogleMaps"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required."
+    },
+    {
+      "name": "GooglePlaces",
+      "currentVersion": "8.3.0",
+      "spmSupported": true,
+      "targetVersion": "8.3.0",
+      "git": "https://github.com/googlemaps/ios-places-sdk.git",
+      "products": [
+        "GooglePlaces"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required."
+    },
+    {
+      "name": "IOSSecuritySuite",
+      "currentVersion": "2.0.2",
+      "spmSupported": true,
+      "targetVersion": "2.0.2",
+      "git": "https://github.com/securing/IOSSecuritySuite.git",
+      "products": [
+        "IOSSecuritySuite"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "IQKeyboardManagerSwift",
+      "currentVersion": "6.3.0",
+      "spmSupported": true,
+      "targetVersion": "6.3.0",
+      "git": "https://github.com/hackiftekhar/IQKeyboardManager.git",
+      "products": [
+        "IQKeyboardManagerSwift"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM supported from 6.5.0"
+    },
+    {
+      "name": "ISPageControl",
+      "currentVersion": "0.1.0",
+      "spmSupported": true,
+      "targetVersion": "0.1.0",
+      "git": "https://github.com/Interactive-Studio/ISPageControl.git",
+      "products": [
+        "ISPageControl"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "InsiderMobile",
+      "currentVersion": "1.2.2",
+      "spmSupported": true,
+      "targetVersion": "1.4.1",
+      "git": "https://github.com/useinsider/Insider-iOS-SDK.git",
+      "products": [
+        "InsiderMobile",
+        "InsiderMobileAdvancedNotification"
+      ],
+      "xcframeworks": [],
+      "notes": "Vendor docs indicate SPM support; confirm exact minimum."
+    },
+    {
+      "name": "KeychainAccess",
+      "currentVersion": "3.2.1",
+      "spmSupported": true,
+      "targetVersion": "3.2.1",
+      "git": "https://github.com/kishikawakatsumi/KeychainAccess.git",
+      "products": [
+        "KeychainAccess"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM added in 4.x"
+    },
+    {
+      "name": "Kingfisher",
+      "currentVersion": "7.9.1",
+      "spmSupported": null,
+      "targetVersion": "7.9.1",
+      "git": "https://github.com/onevcat/Kingfisher.git",
+      "products": [
+        "Kingfisher"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "MEPSDK",
+      "currentVersion": "9.8.6",
+      "spmSupported": null,
+      "targetVersion": "9.8.6",
+      "git": "",
+      "products": [
+        "MEPSDK"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "MGSwipeTableCell",
+      "currentVersion": "1.6.14",
+      "spmSupported": true,
+      "targetVersion": "1.6.14",
+      "git": "https://github.com/MortimerGoro/MGSwipeTableCell.git",
+      "products": [
+        "MGSwipeTableCell"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "Mantis",
+      "currentVersion": "2.8.0",
+      "spmSupported": true,
+      "targetVersion": "2.8.0",
+      "git": "https://github.com/guoyingtao/Mantis.git",
+      "products": [
+        "Mantis"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "PromisesObjC",
+      "currentVersion": "2.0.0",
+      "spmSupported": true,
+      "targetVersion": "2.0.0",
+      "git": "https://github.com/google/promises.git",
+      "products": [
+        "PromisesObjC"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "RxBlocking",
+      "currentVersion": "6.6.0",
+      "spmSupported": true,
+      "targetVersion": "6.6.0",
+      "git": "https://github.com/ReactiveX/RxSwift.git",
+      "products": [
+        "RxBlocking",
+        "RxCocoa",
+        "RxRelay",
+        "RxSwift",
+        "RxTest"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "RxKeyboard",
+      "currentVersion": "2.0.0",
+      "spmSupported": true,
+      "targetVersion": "2.0.0",
+      "git": "https://github.com/RxSwiftCommunity/RxKeyboard.git",
+      "products": [
+        "RxKeyboard"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "RxSwiftExt",
+      "currentVersion": "6.2.1",
+      "spmSupported": true,
+      "targetVersion": "6.2.1",
+      "git": "https://github.com/RxSwiftCommunity/RxSwiftExt.git",
+      "products": [
+        "RxSwiftExt"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "SVProgressHUD",
+      "currentVersion": "2.3.1",
+      "spmSupported": true,
+      "targetVersion": "2.3.1",
+      "git": "https://github.com/SVProgressHUD/SVProgressHUD.git",
+      "products": [
+        "SVProgressHUD"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "SkeletonView",
+      "currentVersion": "1.30.1",
+      "spmSupported": true,
+      "targetVersion": "1.30.1",
+      "git": "https://github.com/Juanpe/SkeletonView.git",
+      "products": [
+        "SkeletonView"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "SwiftLint",
+      "currentVersion": "0.50.1",
+      "spmSupported": true,
+      "targetVersion": "0.50.1",
+      "git": "https://github.com/realm/SwiftLint.git",
+      "products": [
+        "SwiftLint"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "TensorFlowLiteC",
+      "currentVersion": "2.11.0",
+      "spmSupported": false,
+      "targetVersion": "2.11.0",
+      "git": "https://github.com/kewlbear/TensorFlowLiteC.git",
+      "products": [
+        "TensorFlowLiteC"
+      ],
+      "xcframeworks": [],
+      "notes": "Unofficial SPM; consider vendoring binary if policies require official sources"
+    },
+    {
+      "name": "ZIPFoundation",
+      "currentVersion": "0.9.19",
+      "spmSupported": true,
+      "targetVersion": "0.9.19",
+      "git": "https://github.com/weichsel/ZIPFoundation.git",
+      "products": [
+        "ZIPFoundation"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "iProov",
+      "currentVersion": "11.1.1",
+      "spmSupported": true,
+      "targetVersion": "11.1.1",
+      "git": "https://github.com/iProov/ios-spm.git",
+      "products": [
+        "iProov"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM supported; confirm exact minimum for your SDK plan."
+    },
+    {
+      "name": "lottie-ios",
+      "currentVersion": "4.5.0",
+      "spmSupported": true,
+      "targetVersion": "4.5.0",
+      "git": "https://github.com/airbnb/lottie-ios.git",
+      "products": [
+        "lottie-ios"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "nanopb",
+      "currentVersion": "2.30908.0",
+      "spmSupported": true,
+      "targetVersion": "0.3.9.8",
+      "git": "https://github.com/nanopb/nanopb.git",
+      "products": [
+        "nanopb"
+      ],
+      "xcframeworks": [],
+      "notes": "Brought transitively by Firebase in SPM; you don't add it directly."
+    }
+  ]
+}

@@ -1,0 +1,643 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Vendor SPM builder
+- Shallow clone each dependency (grouped by repo, folder name = repo tail)
+- Localize .binaryTarget(url:) to local .xcframework under Binaries/
+- Generate a Shell package that depends via .package(path:)
+- Print final status table + write vendor_report.json/csv
+- Remove .git inside each vendored package
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+import re
+import pathlib
+import zipfile
+import hashlib
+import urllib.request
+import urllib.error
+import json
+import argparse
+import uuid
+
+# ---------- Colors ----------
+class C:
+    R  = "\033[31m"
+    G  = "\033[32m"
+    Y  = "\033[33m"
+    B  = "\033[34m"
+    Cc = "\033[36m"
+    M  = "\033[35m"
+    W  = "\033[37m"
+    GR = "\033[90m"
+    X  = "\033[0m"
+    BO = "\033[1m"
+
+def info(msg):
+    print(f"{C.Cc}{msg}{C.X}")
+
+def step(msg):
+    print(f"{C.BO}{C.B}▶ {msg}{C.X}")
+
+def good(msg):
+    print(f"{C.G}✓ {msg}{C.X}")
+
+def warn(msg):
+    print(f"{C.Y}⚠ {msg}{C.X}")
+
+def bad(msg):
+    print(f"{C.R}✗ {msg}{C.X}")
+
+def dim(msg):
+    print(f"{C.GR}{msg}{C.X}")
+
+def run(cmd, cwd=None, check=True):
+    dim("$ " + " ".join(cmd) + (f"  (cwd={cwd})" if cwd else ""))
+    return subprocess.run(cmd, cwd=cwd, check=check)
+
+def ensure_dir(p):
+    os.makedirs(p, exist_ok=True)
+
+# ---------- Utility ----------
+def _canon(url: str) -> str:
+    if not url:
+        return ""
+    u = url.strip().lower()
+    if u.endswith(".git"):
+        u = u[:-4]
+    return u
+
+def _repo_tail(url: str) -> str:
+    if not url:
+        return "UNKNOWN"
+    t = url.rsplit("/", 1)[-1]
+    if t.endswith(".git"):
+        t = t[:-4]
+    return t
+
+def _semver_key(v):
+    if not v:
+        return (0, 0, 0)
+    parts = [int(x) for x in re.findall(r"\d+", str(v))[:3]]
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3])
+
+def load_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+# ---------- Normalization ----------
+def normalize_packages(pkgs):
+    """
+    - Force correct git for known umbrella/nested repos
+    - Group entries sharing the same repo
+    - Set 'name' to repo tail (drives Vendor/<name>)
+    - Union products and filter by allowlist for certain repos
+    - Pick highest target/current version across grouped entries
+    """
+    known_map = {
+        # RxSwift family
+        "RxSwift": ("https://github.com/ReactiveX/RxSwift.git", ["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        "RxCocoa": ("https://github.com/ReactiveX/RxSwift.git", ["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        "RxRelay": ("https://github.com/ReactiveX/RxSwift.git", ["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        "RxBlocking": ("https://github.com/ReactiveX/RxSwift.git", ["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        "RxTest": ("https://github.com/ReactiveX/RxSwift.git", ["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        # RxDataSources + Differentiator
+        "RxDataSources": ("https://github.com/RxSwiftCommunity/RxDataSources.git", ["RxDataSources","Differentiator"]),
+        "Differentiator": ("https://github.com/RxSwiftCommunity/RxDataSources.git", ["RxDataSources","Differentiator"]),
+        # Adobe Core
+        "AEPCore": ("https://github.com/adobe/aepsdk-core-ios.git", ["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        "AEPIdentity": ("https://github.com/adobe/aepsdk-core-ios.git", ["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        "AEPLifecycle": ("https://github.com/adobe/aepsdk-core-ios.git", ["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        "AEPServices": ("https://github.com/adobe/aepsdk-core-ios.git", ["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        "AEPSignal": ("https://github.com/adobe/aepsdk-core-ios.git", ["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        # Firebase umbrella
+        "FirebaseABTesting": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseABTesting"]),
+        "FirebaseCore": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseCore"]),
+        "FirebaseCoreDiagnostics": ("https://github.com/firebase/firebase-ios-sdk.git", []),
+        "FirebaseCrashlytics": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseCrashlytics"]),
+        "FirebaseInstallations": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseInstallations"]),
+        "FirebaseMessaging": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseMessaging"]),
+        "FirebasePerformance": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebasePerformance"]),
+        "FirebaseRemoteConfig": ("https://github.com/firebase/firebase-ios-sdk.git", ["FirebaseRemoteConfig"]),
+    }
+    allowed_by_repo = {
+        _canon("https://github.com/ReactiveX/RxSwift.git"): set(["RxSwift","RxCocoa","RxRelay","RxBlocking","RxTest"]),
+        _canon("https://github.com/RxSwiftCommunity/RxDataSources.git"): set(["RxDataSources","Differentiator"]),
+        _canon("https://github.com/adobe/aepsdk-core-ios.git"): set(["AEPCore","AEPIdentity","AEPLifecycle","AEPServices","AEPSignal"]),
+        _canon("https://github.com/firebase/firebase-ios-sdk.git"): set([
+            "FirebaseABTesting","FirebaseCore","FirebaseCrashlytics","FirebaseInstallations",
+            "FirebaseMessaging","FirebasePerformance","FirebaseRemoteConfig"]
+        ),
+    }
+    # Apply known mapping
+    for e in pkgs:
+        nm = (e.get("name") or "").strip()
+        if nm in known_map:
+            git, prods = known_map[nm]
+            e["git"] = git
+            e["products"] = sorted(list(set((e.get("products") or []) + prods)))
+    # Group by repo
+    groups = {}
+    for e in pkgs:
+        key = _canon(e.get("git", ""))
+        groups.setdefault(key or f"__nogit__:{e.get('name','UNKNOWN')}", []).append(e)
+    merged = []
+    for key, entries in groups.items():
+        if key.startswith("__nogit__"):
+            merged.extend(entries)
+            continue
+        git_url = entries[0].get("git", "")
+        base = dict(entries[0])
+        base["name"] = _repo_tail(git_url)  # folder name = repo tail
+        # Union products (filter by repo allow list if present)
+        prods = []
+        for e in entries:
+            ps = e.get("products") or [e.get("name")]
+            prods.extend([p for p in ps if p])
+        allow = allowed_by_repo.get(key)
+        if allow is not None:
+            prods = [p for p in prods if p in allow]
+        base["products"] = sorted(list(set(prods)))
+        # Version: highest target/current across entries
+        versions = []
+        for e in entries:
+            tv = e.get("targetVersion") or e.get("currentVersion")
+            if tv:
+                versions.append(tv)
+        if versions:
+            versions = sorted(versions, key=_semver_key, reverse=True)
+            base["targetVersion"] = versions[0]
+            base["currentVersion"] = versions[-1]
+        base["git"] = git_url
+        merged.append(base)
+    return merged
+
+# ---------- Shallow Git checkout ----------
+def checkout_repo(dest_dir, git_url, version):
+    """
+    Shallow clone + shallow fetch of specific ref when provided.
+    - If dest exists and isn't a git repo, remove it.
+    - If version empty: clone default branch with --depth 1.
+    - If version provided: clone --no-checkout, then shallow fetch the ref and checkout.
+    """
+    ensure_dir(os.path.dirname(dest_dir))
+    if os.path.exists(dest_dir) and not os.path.exists(os.path.join(dest_dir, ".git")):
+        warn(f"{dest_dir} exists but is not a git repo; removing to re-clone.")
+        shutil.rmtree(dest_dir)
+    if not os.path.exists(dest_dir):
+        if not version:
+            step(f"Cloning (shallow) {git_url} → {dest_dir}")
+            try:
+                run(["git", "clone", "--depth", "1", "--single-branch", "--filter=blob:none", git_url, dest_dir])
+            except subprocess.CalledProcessError as e:
+                bad(f"git clone failed: {e}")
+                return False, "git clone failed"
+            return True, "HEAD"
+        else:
+            step(f"Cloning (no checkout) {git_url} → {dest_dir}")
+            try:
+                run(["git", "clone", "--no-checkout", "--filter=blob:none", git_url, dest_dir])
+            except subprocess.CalledProcessError as e:
+                bad(f"git clone failed: {e}")
+                return False, "git clone failed"
+    else:
+        dim(f"{dest_dir} already exists")
+    if not version:
+        dim("No version specified; leaving repository at default branch/HEAD")
+        return True, "HEAD"
+    # Try shallow fetch patterns
+    candidates = [version, f"v{version}", f"origin/{version}"]
+    tag_candidates = [("tag", version), ("tag", f"v{version}")]
+    for ref in candidates:
+        try:
+            run(["git", "fetch", "--depth", "1", "origin", ref], cwd=dest_dir)
+            run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir)
+            good(f"Checked out {ref}")
+            return True, ref
+        except subprocess.CalledProcessError:
+            continue
+    for kind, ref in tag_candidates:
+        try:
+            run(["git", "fetch", "--depth", "1", "origin", kind, ref], cwd=dest_dir)
+            run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir)
+            good(f"Checked out {kind} {ref}")
+            return True, ref
+        except subprocess.CalledProcessError:
+            continue
+    bad(f"Could not checkout shallow ref for version '{version}'")
+    return False, f"checkout failed ({version})"
+
+# ---------- Package.swift parsing & patching ----------
+BIN_RE = re.compile(r"""\.binaryTarget\s*\(\s*name\s*:\s*"(?P<name>[^"]+)"\s*,\s*(?P<body>[^)]+)\)""", re.X | re.S)
+URL_FIELD_RE = re.compile(r'url\s*:\s*"(?P<url>[^"]+)"')
+CHKSUM_FIELD_RE = re.compile(r'checksum\s*:\s*"(?P<sum>[0-9a-fA-F]+)"')
+PATH_FIELD_RE = re.compile(r'path\s*:\s*"(?P<path>[^"]+)"')
+
+def find_binary_targets(pkg_swift_text):
+    out = []
+    for m in BIN_RE.finditer(pkg_swift_text):
+        body = m.group("body")
+        url_m = URL_FIELD_RE.search(body)
+        ch_m = CHKSUM_FIELD_RE.search(body)
+        path_m = PATH_FIELD_RE.search(body)
+        out.append({
+            "name": m.group("name"),
+            "url": url_m.group("url") if url_m else None,
+            "checksum": ch_m.group("sum") if ch_m else None,
+            "path": path_m.group("path") if path_m else None,
+            "span": m.span()
+        })
+    return out
+
+def compute_sha256_hex(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024*1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def download_file(url, dest, token=None):
+    step(f"Downloading binary: {url}")
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+        headers["Accept"] = "application/octet-stream"
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r, open(dest, "wb") as f:
+            shutil.copyfileobj(r, f)
+        good(f"Saved → {dest}")
+        return True, None
+    except urllib.error.HTTPError as e:
+        return False, f"HTTPError {e.code}: {e.reason}"
+    except urllib.error.URLError as e:
+        return False, f"URLError: {e.reason}"
+    except Exception as e:
+        return False, str(e)
+
+def extract_xcframework(zip_path, dest_dir, expected_name=None):
+    temp_dir = os.path.join(dest_dir, f".extract_{uuid.uuid4().hex}")
+    ensure_dir(temp_dir)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(temp_dir)
+    candidates = []
+    for root, dirs, files in os.walk(temp_dir):
+        for d in dirs:
+            if d.endswith(".xcframework"):
+                candidates.append(os.path.join(root, d))
+    if not candidates:
+        return None, temp_dir, "No .xcframework found in archive"
+    chosen = None
+    if expected_name:
+        for c in candidates:
+            if os.path.basename(c).lower() == f"{expected_name.lower()}.xcframework":
+                chosen = c
+                break
+    if chosen is None:
+        candidates.sort(key=lambda p: len(p))
+        chosen = candidates[0]
+    return chosen, temp_dir, None
+
+def patch_manifest_to_path(pkg_swift_path, name, local_rel_path):
+    s = pathlib.Path(pkg_swift_path).read_text(encoding="utf-8", errors="ignore")
+    backup = str(pkg_swift_path) + ".orig"
+    if not os.path.exists(backup):
+        pathlib.Path(backup).write_text(s, encoding="utf-8")
+        dim(f"Backed up original manifest → {backup}")
+    pattern = re.compile(r'\.binaryTarget\s*\(\s*name\s*:\s*"' + re.escape(name) + r'"\s*,\s*[^)]*\)', re.S)
+    repl = f'.binaryTarget(name: "{name}", path: "{local_rel_path}")'
+    new_s, n = pattern.subn(repl, s, count=1)
+    if n == 0:
+        return False, "Could not locate .binaryTarget(...) block to patch"
+    pathlib.Path(pkg_swift_path).write_text(new_s, encoding="utf-8")
+    return True, None
+
+# ---------- Shell package ----------
+def build_shell_package_text(shell_name, deps_str, prods_str):
+    return f"""// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "{shell_name}",
+    platforms: [.iOS(.v15)],
+    products: [
+        .library(name: "{shell_name}", targets: ["{shell_name}"]),
+    ],
+    dependencies: [
+{deps_str}
+    ],
+    targets: [
+        .target(
+            name: "{shell_name}",
+            dependencies: [
+{prods_str}
+            ]
+        )
+    ]
+)
+"""
+
+# ---------- Cleanup helpers ----------
+def remove_git_dir(path):
+    g = os.path.join(path, ".git")
+    if os.path.isdir(g):
+        try:
+            shutil.rmtree(g)
+            dim(f"Removed git metadata → {g}")
+        except Exception as e:
+            warn(f"Could not remove {g}: {e}")
+
+# ---------- Reporting ----------
+def truncate(s, n):
+    return s if len(s) <= n else s[:n-1] + "…"
+
+def print_table(rows):
+    cols = ["Package","Version","Clone","Binaries","Remaining","Errors"]
+    widths = {c: len(c) for c in cols}
+    for r in rows:
+        for c in cols:
+            widths[c] = max(widths[c], len(str(r.get(c, ""))))
+    line = " | ".join(c.ljust(widths[c]) for c in cols)
+    sep  = "-+-".join("-"*widths[c] for c in cols)
+    print("\n" + line)
+    print(sep)
+    for r in rows:
+        print(" | ".join(str(r.get(c, "")).ljust(widths[c]) for c in cols))
+    print()
+
+# ---------- Main ----------
+def main():
+    ap = argparse.ArgumentParser(description="Vendor packages and build shell package (with auto XCFramework localizing).");
+    ap.add_argument("config", nargs="?", default="vendor_config.json", help="Path to vendor_config.json")
+    ap.add_argument("--skip-checksum", action="store_true", help="Do not verify binary ZIP checksum against manifest")
+    ap.add_argument("--force", action="store_true", help="Proceed even when some steps fail (best-effort)")
+    ap.add_argument("--report-prefix", default="vendor_report", help="Prefix for report files (JSON/CSV)")
+    args = ap.parse_args()
+
+    cfg = load_json(args.config)
+    cfg["packages"] = normalize_packages(cfg.get("packages", []))
+
+    root = pathlib.Path.cwd()
+    vendor = root / cfg.get("vendorDir", "Vendor")
+    shell_root = root / "Shell"
+    shell_name = cfg.get("shellPackageName", "ThirdPartyShell")
+    GHES_TOKEN = os.environ.get("GHES_TOKEN")
+
+    overall = {"cloned": [], "binary_patched": [], "binary_skipped": [], "errors": []}
+    per_pkg = []
+
+    ensure_dir(vendor)
+    dep_lines = []
+    prod_lines = []
+
+    step("Starting vendoring process")
+    for p in cfg.get("packages", []):
+        name = p.get("name")
+        git = (p.get("git") or "").strip()
+        target_ver = str(p.get("targetVersion") or p.get("currentVersion") or "")
+        products = p.get("products") or [name]
+
+        row = {
+            "package": name or "UNKNOWN",
+            "version": target_ver or "—",
+            "clone_status": "FAIL",
+            "checkout_ref": "",
+            "binaries_total": 0,
+            "binaries_patched": 0,
+            "binaries_skipped": 0,
+            "remaining_remote_binaries": 0,
+            "errors": []
+        }
+
+        if not name or not git:
+            msg = f"{name or 'UNKNOWN'}: missing git URL in config"
+            bad(msg)
+            overall["errors"].append(msg)
+            row["errors"].append(msg)
+            per_pkg.append(row)
+            if not args.force:
+                continue
+            else:
+                warn("Continuing due to --force")
+
+        pkg_dir = vendor / name
+        ok, ref = checkout_repo(str(pkg_dir), git, target_ver)
+        if not ok:
+            msg = f"{name}: checkout failed for {target_ver} ({ref})"
+            bad(msg)
+            overall["errors"].append(msg)
+            row["errors"].append(msg)
+            per_pkg.append(row)
+            if not args.force:
+                continue
+            else:
+                warn("Continuing due to --force")
+        else:
+            overall["cloned"].append(name)
+            row["clone_status"] = "OK"
+            row["checkout_ref"] = ref
+
+        pkg_swift_path = pkg_dir / "Package.swift"
+        if not pkg_swift_path.exists():
+            warn(f"{name}: Package.swift not found. If this is a non-SPM repo, you must add one manually.")
+            row["errors"].append("Package.swift not found")
+        else:
+            s = pkg_swift_path.read_text(encoding="utf-8", errors="ignore")
+            bins = find_binary_targets(s)
+            row["binaries_total"] = len(bins)
+            if len(bins) == 0:
+                dim(f"{name}: no .binaryTarget(url:) entries found.")
+            for bt in bins:
+                tname = bt["name"]
+                if bt["path"]:
+                    dim(f"{name}: binary target '{tname}' already uses path: {bt['path']} → skipping")
+                    overall["binary_skipped"].append(f"{name}:{tname}")
+                    row["binaries_skipped"] += 1
+                    continue
+                url = bt["url"]
+                ch = bt["checksum"]
+                if not url:
+                    dim(f"{name}: binary target '{tname}' has no URL (maybe conditional?) → skipping")
+                    overall["binary_skipped"].append(f"{name}:{tname}")
+                    row["binaries_skipped"] += 1
+                    continue
+
+                bins_dir = pkg_dir / "Binaries"
+                ensure_dir(bins_dir)
+                zip_path = bins_dir / f"{tname}.zip"
+                ok, err = download_file(url, str(zip_path), token=GHES_TOKEN)
+                if not ok:
+                    msg = f"{name}:{tname}: download failed → {err}"
+                    bad(msg)
+                    overall["errors"].append(msg)
+                    row["errors"].append(msg)
+                    row["remaining_remote_binaries"] += 1
+                    if not args.force:
+                        continue
+                    else:
+                        warn("Continuing due to --force")
+
+                try:
+                    if ch and not args.skip_checksum:
+                        sha = compute_sha256_hex(str(zip_path))
+                        if sha.lower() != ch.lower():
+                            msg = f"{name}:{tname}: checksum mismatch! expected {ch}, got {sha}"
+                            bad(msg)
+                            overall["errors"].append(msg)
+                            row["errors"].append(msg)
+                            row["remaining_remote_binaries"] += 1
+                            if not args.force:
+                                continue
+                            else:
+                                warn("Continuing due to --force")
+                    elif not ch:
+                        warn(f"{name}:{tname}: manifest missing checksum; unable to verify")
+                except Exception as e:
+                    msg = f"{name}:{tname}: checksum compute error → {e}"
+                    bad(msg)
+                    overall["errors"].append(msg)
+                    row["errors"].append(msg)
+                    row["remaining_remote_binaries"] += 1
+                    if not args.force:
+                        continue
+                    else:
+                        warn("Continuing due to --force")
+
+                xc_path, tmp_dir, err = extract_xcframework(str(zip_path), str(bins_dir), expected_name=tname)
+                if not xc_path:
+                    msg = f"{name}:{tname}: {err or 'could not extract xcframework'}"
+                    bad(msg)
+                    overall["errors"].append(msg)
+                    row["errors"].append(msg)
+                    row["remaining_remote_binaries"] += 1
+                    if not args.force:
+                        continue
+                    else:
+                        warn("Continuing due to --force")
+
+                final_path = bins_dir / f"{tname}.xcframework"
+                try:
+                    if final_path.exists():
+                        shutil.rmtree(final_path)
+                    shutil.move(xc_path, str(final_path))
+                    good(f"{name}:{tname}: placed → {final_path}")
+                except Exception as e:
+                    msg = f"{name}:{tname}: move failed → {e}"
+                    bad(msg)
+                    overall["errors"].append(msg)
+                    row["errors"].append(msg)
+                    row["remaining_remote_binaries"] += 1
+                    if not args.force:
+                        continue
+                finally:
+                    try:
+                        if tmp_dir and os.path.isdir(tmp_dir):
+                            shutil.rmtree(tmp_dir)
+                        if os.path.exists(zip_path):
+                            os.remove(zip_path)
+                    except Exception as e:
+                        warn(f"{name}:{tname}: cleanup failed → {e}")
+
+                ok, err = patch_manifest_to_path(str(pkg_swift_path), tname, f"Binaries/{tname}.xcframework")
+                if not ok:
+                    msg = f"{name}:{tname}: manifest patch failed → {err}"
+                    bad(msg)
+                    overall["errors"].append(msg)
+                    row["errors"].append(msg)
+                    row["remaining_remote_binaries"] += 1
+                    if not args.force:
+                        continue
+                else:
+                    good(f"{name}:{tname}: manifest updated to local path binary target")
+                    overall["binary_patched"].append(f"{name}:{tname}")
+                    row["binaries_patched"] += 1
+
+        dep_lines.append(f'        .package(path: "../{cfg.get("vendorDir","Vendor")}/{name}"),')
+        for prod in products:
+            prod_lines.append(f'                .product(name: "{prod}", package: "{name}"),')
+
+        try:
+            remove_git_dir(str(pkg_dir))
+        except Exception as e:
+            warn(f"{name}: failed to remove .git → {e}")
+
+        per_pkg.append(row)
+
+    ensure_dir(shell_root / "Sources" / shell_name)
+    pkg_text = build_shell_package_text(shell_name, "\n".join(dep_lines), "\n".join(prod_lines))
+    pathlib.Path(shell_root / "Package.swift").write_text(pkg_text, encoding="utf-8")
+    # Try to re-export product modules (best-effort)
+    exported = set()
+    for entry in cfg.get("packages", []):
+        for prod in (entry.get("products") or []):
+            exported.add(prod)
+    exports = "// Re-export convenience\n" + "\n".join([f"@_exported import {m}" for m in sorted(exported)])
+    pathlib.Path(shell_root / "Sources" / shell_name / "Exports.swift").write_text(exports, encoding="utf-8")
+
+    # Final per-library table
+    rows_for_print = []
+    for r in per_pkg:
+        clone = (C.G + "OK" + C.X) if r["clone_status"] == "OK" else (C.R + "FAIL" + C.X)
+        bins = f"{r['binaries_patched']}/{r['binaries_total']}"
+        remaining = f"{r['remaining_remote_binaries']}"
+        err_txt = "; ".join(r["errors"]) if r["errors"] else ""
+        rows_for_print.append({
+            "Package": r["package"],
+            "Version": r["version"],
+            "Clone": clone,
+            "Binaries": bins,
+            "Remaining": remaining,
+            "Errors": truncate(err_txt, 120)
+        })
+    step("Final status per library")
+    print_table(rows_for_print)
+
+    # Reports
+    report_base = pathlib.Path(args.report_prefix)
+    json_path = str(report_base.with_suffix(".json"))
+    csv_path = str(report_base.with_suffix(".csv"))
+    with open(json_path, "w", encoding="utf-8") as jf:
+        json.dump(per_pkg, jf, indent=2)
+    import csv as _csv
+    with open(csv_path, "w", newline="", encoding="utf-8") as cf:
+        w = _csv.writer(cf)
+        w.writerow(["package","version","clone_status","checkout_ref","binaries_total","binaries_patched","binaries_skipped","remaining_remote_binaries","errors"])
+        for r in per_pkg:
+            w.writerow([
+                r["package"], r["version"], r["clone_status"], r["checkout_ref"],
+                r["binaries_total"], r["binaries_patched"], r["binaries_skipped"],
+                r["remaining_remote_binaries"], " | ".join(r["errors"])
+            ])
+    print(f"{C.GR}Wrote report JSON → {json_path}{C.X}")
+    print(f"{C.GR}Wrote report CSV  → {csv_path}{C.X}")
+
+    # Summary
+    print()
+    step("Summary")
+    print(f"  Vendored packages     : {C.BO}{len(cfg.get('packages', []))}{C.X}")
+    print(f"  Cloned successfully   : {C.G}{len(overall['cloned'])}{C.X}")
+    print(f"  Binary targets patched: {C.G}{len(overall['binary_patched'])}{C.X}")
+    print(f"  Binary skipped        : {C.Y}{len(overall['binary_skipped'])}{C.X}")
+    print(f"  Errors                : {C.R}{len(overall['errors'])}{C.X}")
+    if overall["errors"]:
+        print()
+        step("Errors detail")
+        for e in overall["errors"]:
+            print(f"  - {C.R}{e}{C.X}")
+    good(f"Shell package: {shell_root}")
+    print(f"Next steps:\n  1) Open {shell_root}/Package.swift in Xcode.\n  2) Add it to your workspace.\n  3) Build.")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        bad("Interrupted by user.")
+        sys.exit(130)
+    except Exception as e:
+        bad(f"Fatal error: {e}")
+        sys.exit(1)

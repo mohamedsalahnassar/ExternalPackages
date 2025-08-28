@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, json, re, shutil, subprocess, urllib.request, urllib.error, zipfile, tempfile, uuid, hashlib, argparse, pathlib
+import base64
+from urllib.parse import urlparse
 from typing import List, Dict, Tuple
 
 # ---------- Colors ----------
@@ -215,6 +217,29 @@ def download_file(url, dest, token=None, extra_headers=None):
     if extra_headers:
         headers.update(extra_headers)
 
+    # Heuristics for Artifactory/JFrog-hosted zips (often require auth or '?download')
+    try:
+        u = urlparse(url)
+        host = (u.netloc or "").lower()
+    except Exception:
+        host = ""
+
+    if "jfrog" in host or "artifactory" in host:
+        # Inject API key header if provided via env
+        api_key = os.environ.get("ARTIFACTORY_API_KEY") or os.environ.get("APPD_ARTIFACTORY_API_KEY")
+        if api_key and not headers.get("X-JFrog-Art-Api") and not headers.get("Authorization"):
+            headers["X-JFrog-Art-Api"] = api_key
+        # Basic auth if provided
+        basic = os.environ.get("ARTIFACTORY_BASIC_AUTH")
+        user = os.environ.get("ARTIFACTORY_USER") or os.environ.get("APPD_ARTIFACTORY_USER")
+        pwd  = os.environ.get("ARTIFACTORY_PASSWORD") or os.environ.get("APPD_ARTIFACTORY_PASSWORD")
+        if not headers.get("Authorization"):
+            if basic:
+                headers["Authorization"] = basic
+            elif user and pwd:
+                b = base64.b64encode(f"{user}:{pwd}".encode()).decode()
+                headers["Authorization"] = f"Basic {b}"
+
     def attempt(h, tag):
         try:
             req = urllib.request.Request(url, headers=h)
@@ -251,13 +276,29 @@ def download_file(url, dest, token=None, extra_headers=None):
         except Exception as e:
             return False, f"{tag}: {e}"
     ok, err = attempt(headers, "initial")
-    if ok: return True, None
+    if ok:
+        return True, None
+    # Retry with Referer if auth forbidden
     if "HTTP Error 403" in (err or "") or "HTTP Error 401" in (err or ""):
         if "Referer" not in headers:
             headers["Referer"] = "https://github.com"
         ok2, err2 = attempt(headers, "retry+referer")
-        if ok2: return True, None
-        return False, err2 or err
+        if ok2:
+            return True, None
+        # Fallthrough to potential '?download' retry
+        err = err2 or err
+    # Some Artifactory URLs need '?download' to return raw bytes
+    if ((err or "").startswith("initial: not a zip file") or "not a zip file" in (err or "")) and "download" not in (url or ""):
+        sep = '&' if ('?' in url) else '?'
+        url2 = f"{url}{sep}download"
+        try:
+            req_headers = dict(headers)
+            ok3, err3 = download_file(url2, dest, token=token, extra_headers=req_headers)
+            if ok3:
+                return True, None
+            return False, err3 or err
+        except Exception:
+            return False, err
     return False, err
 def extract_spm_artifact(zip_path, out_dir, expected_name=None):
     temp_dir = os.path.join(out_dir, f".extract_{uuid.uuid4().hex}")
@@ -308,13 +349,120 @@ def print_table(rows):
         print(" | ".join(pad(r.get(c, ""), widths[c]) for c in cols))
     print()
 
+# ---------- Helpers ----------
+def remove_git_dir(path: str):
+    g = os.path.join(path, ".git")
+    if os.path.isdir(g):
+        try:
+            shutil.rmtree(g)
+            dim(f"Removed git metadata → {g}")
+        except Exception as e:
+            warn(f"Could not remove {g}: {e}")
+
+def _products_for_package(cfg: Dict, name: str) -> List[str]:
+    for e in (cfg.get("packages") or []):
+        if (e.get("name") or "").strip() == name:
+            prods = e.get("products") or [name]
+            return [p for p in prods if p]
+    return [name]
+
+def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
+    """Scan Vendor dir for all packages that have a Package.swift and build include list."""
+    includes: List[Dict] = []
+    if not vendor_root.exists():
+        return includes
+    for entry in sorted(vendor_root.iterdir(), key=lambda p: p.name.lower()):
+        if not entry.is_dir():
+            continue
+        pkg_manifest = entry / "Package.swift"
+        if pkg_manifest.exists():
+            name = entry.name
+            products = _products_for_package(cfg, name)
+            includes.append({"name": name, "products": products})
+    return includes
+
 # ---------- Main ----------
+def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: str):
+    """
+    Create a Shell/Package.swift that depends on vendored packages via path.
+    Includes a single library target that depends on each listed product.
+    Only include packages that actually have a Package.swift in Vendor/<name>.
+    """
+    shell_name = cfg.get("shellPackageName", "ThirdPartyShell")
+    vendor_dir = vendor_root or cfg.get("vendorDir", "Vendor")
+
+    # Prepare dependency entries (path-based)
+    dep_lines = []
+    prod_lines = []
+    seen_deps = set()
+    seen_prod_pairs = set()
+    for p in included_pkgs:
+        name = p.get("name")
+        if not name:
+            continue
+        if name not in seen_deps:
+            rel_path = os.path.relpath(os.path.join(str(vendor_dir), name), start="Shell")
+            dep_lines.append(f'        .package(path: "{rel_path}"),')
+            seen_deps.add(name)
+        products = p.get("products") or [name]
+        for prod in products:
+            # Attach each declared product from the package
+            key = (prod, name)
+            if key in seen_prod_pairs:
+                continue
+            prod_lines.append(f'                .product(name: "{prod}", package: "{name}"),')
+            seen_prod_pairs.add(key)
+
+    # Minimal Swift package manifest (mirrors earlier generator)
+    pkg_txt = f"""// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "{shell_name}",
+    platforms: [
+        .iOS(.v15)
+    ],
+    products: [
+        .library(name: "{shell_name}", targets: ["{shell_name}"])
+    ],
+    dependencies: [
+{chr(10).join(dep_lines)}
+    ],
+    targets: [
+        .target(
+            name: "{shell_name}",
+            dependencies: [
+{chr(10).join(prod_lines)}
+            ]
+        )
+    ]
+)
+"""
+
+    shell_dir = pathlib.Path("Shell")
+    src_dir = shell_dir / "Sources" / shell_name
+    ensure_dir(str(src_dir))
+
+    # Write manifest
+    (shell_dir / "Package.swift").write_text(pkg_txt)
+
+    # Re-export modules for convenience
+    exported = set()
+    for p in included_pkgs:
+        for prod in (p.get("products") or []):
+            exported.add(prod)
+    exports_src = "// Auto-generated re-exports\n" + "\n".join([f"@_exported import {m}" for m in sorted(exported)])
+    (src_dir / "Exports.swift").write_text(exports_src)
+
+    good(f"Shell package generated → {shell_dir / 'Package.swift'}")
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config_pos", nargs="?", help="Path to vendor_config.normalized.json")
     ap.add_argument("--config", default=None)
     ap.add_argument("--vendor-dir", default=None)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
     args = ap.parse_args()
     # Backward-compatible positional config
     config_path = args.config or args.config_pos or "vendor_config.normalized.json"
@@ -324,7 +472,8 @@ def main():
     ensure_dir(vendor_root)
 
     rows_for_print = []
-    dep_lines: List[str] = []
+    # Keep track of packages that are safe to include in Shell (have a Package.swift)
+    shell_include: List[Dict] = []
     overall = {"errors": [], "cloned": []}
 
     for p in cfg.get("packages", []):
@@ -335,6 +484,7 @@ def main():
         if not binary_headers.get("Referer") and git:
             binary_headers["Referer"] = git
         products = p.get("products") or [name]
+        spm_supported = p.get("spmSupported")
 
         row = {
             "Package": name or "UNKNOWN",
@@ -344,6 +494,16 @@ def main():
             "Remaining": 0,
             "Errors": ""
         }
+
+        # Respect spmSupported=false unless explicitly included
+        if spm_supported is False and not args.include_unsupported:
+            msg = f"{name}: marked spmSupported=false in config; skipping"
+            warn(msg)
+            row["Clone"] = C.Y + "SKIP" + C.X
+            row["Errors"] = msg
+            rows_for_print.append(row)
+            overall["cloned"].append(name)
+            continue
 
         # Skip if truly done for this version
         pkg_dir = vendor_root / (name or "UNKNOWN")
@@ -379,7 +539,7 @@ def main():
         # Parse Package.swift
         pkg_swift_path = pkg_dir / "Package.swift"
         if not pkg_swift_path.exists():
-            # Not a swift package; still mark done
+            # Not a swift package; still mark done but skip from Shell generation
             _mark_pkg_done(str(vendor_root), name, target_ver, str(pkg_dir))
             rows_for_print.append(row)
             continue
@@ -433,10 +593,18 @@ def main():
         if row["Errors"] == "" and remaining == 0:
             _mark_pkg_done(str(vendor_root), name, target_ver, str(pkg_dir))
         rows_for_print.append(row)
-
-        dep_lines.append(f'        .package(path: "../{cfg.get("vendorDir","Vendor")}/{name}"),')
+        # Eligible for Shell if it has a manifest
+        shell_include.append({
+            "name": name,
+            "products": products
+        })
+        # Remove embedded .git to keep vendored code clean
+        remove_git_dir(str(pkg_dir))
 
     print_table(rows_for_print)
+    # Always regenerate Shell package by scanning all vendored packages with manifests
+    all_shell_include = _scan_vendor_for_shell(vendor_root, cfg)
+    _generate_shell_package(cfg, all_shell_include, str(vendor_root))
 
 if __name__ == "__main__":
     try:

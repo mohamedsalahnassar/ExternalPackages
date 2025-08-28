@@ -16,7 +16,7 @@
     {
       "name": "AEPAssurance",
       "currentVersion": "4.1.1",
-      "spmSupported": null,
+      "spmSupported": true,
       "targetVersion": "4.1.1",
       "git": "https://github.com/adobe/aepsdk-assurance-ios.git",
       "products": [
@@ -97,7 +97,7 @@
     {
       "name": "Alamofire",
       "currentVersion": "5.0.0",
-      "spmSupported": false,
+      "spmSupported": true,
       "targetVersion": "5.0.0",
       "git": "https://github.com/Alamofire/Alamofire.git",
       "products": [
@@ -109,7 +109,7 @@
     {
       "name": "AlamofireNetworkActivityLogger",
       "currentVersion": "2.4.0",
-      "spmSupported": false,
+      "spmSupported": true,
       "targetVersion": "3.4.0",
       "git": "https://github.com/konkab/AlamofireNetworkActivityLogger.git",
       "products": [
@@ -190,7 +190,7 @@
     {
       "name": "FirebaseABTesting",
       "currentVersion": "8.9.0",
-      "spmSupported": null,
+      "spmSupported": true,
       "targetVersion": "8.9.1",
       "git": "https://github.com/firebase/firebase-ios-sdk.git",
       "products": [
@@ -218,7 +218,7 @@
     {
       "name": "GoogleDataTransport",
       "currentVersion": "9.1.2",
-      "spmSupported": null,
+      "spmSupported": true,
       "targetVersion": "9.1.2",
       "git": "https://github.com/google/GoogleDataTransport.git",
       "products": [
@@ -312,7 +312,7 @@
     {
       "name": "Kingfisher",
       "currentVersion": "7.9.1",
-      "spmSupported": null,
+      "spmSupported": true,
       "targetVersion": "7.9.1",
       "git": "https://github.com/onevcat/Kingfisher.git",
       "products": [
@@ -323,9 +323,9 @@
     {
       "name": "MEPSDK",
       "currentVersion": "9.8.6",
-      "spmSupported": null,
+      "spmSupported": true,
       "targetVersion": "9.8.6",
-      "git": "",
+      "git": "https://maven.moxtra.com/repo/mepsdkdylib.git",
       "products": [
         "MEPSDK"
       ],
@@ -437,9 +437,9 @@
     {
       "name": "TensorFlowLiteC",
       "currentVersion": "2.11.0",
-      "spmSupported": false,
-      "targetVersion": "2.11.0",
-      "git": "https://github.com/kewlbear/TensorFlowLiteC.git",
+      "spmSupported": true,
+      "targetVersion": "2.14.0",
+      "git": "https://github.com/tareksabry1337/TensorFlowLiteC.git",
       "products": [
         "TensorFlowLiteC"
       ],

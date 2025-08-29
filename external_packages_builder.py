@@ -951,8 +951,11 @@ def _cleanup_deep_package(pkg_dir: pathlib.Path):
         return
     txt = manifest.read_text()
     keep: Set[pathlib.Path] = set()
-    # Always keep manifest and Binaries dir
+    # Always keep manifest, .done.json marker and Binaries dir
     keep.add(manifest)
+    done_marker = pkg_dir / '.done.json'
+    if done_marker.exists():
+        keep.add(done_marker)
     bins_dir = pkg_dir / 'Binaries'
     if bins_dir.exists():
         keep.add(bins_dir)
@@ -980,6 +983,12 @@ def _cleanup_deep_package(pkg_dir: pathlib.Path):
             keep.add((pkg_dir / ph.group(1)).resolve())
     # Remove Tests, Examples, docs extras
     remove_candidates = []
+    # Never remove these top-level files for compliance/traceability
+    protected_names = {
+        'Package.swift', '.done.json',
+        'LICENSE', 'LICENSE.md', 'COPYING', 'COPYRIGHT', 'NOTICE',
+        'README', 'README.md', 'README.rst'
+    }
     top_level = list(pkg_dir.iterdir())
     for item in top_level:
         if item.name in {'.git', '.github', '.circleci', '.gitignore', '.swiftlint.yml', 'Tests', 'Examples', 'Example', 'Docs', 'Documentation'}:
@@ -994,7 +1003,7 @@ def _cleanup_deep_package(pkg_dir: pathlib.Path):
                     break
             except Exception:
                 pass
-        if not in_keep and item.name != 'Package.swift':
+        if not in_keep and item.name not in protected_names:
             remove_candidates.append(item)
     for c in remove_candidates:
         try:
@@ -1006,31 +1015,7 @@ def _cleanup_deep_package(pkg_dir: pathlib.Path):
         except Exception as e:
             warn(f"Could not remove {c}: {e}")
 
-def _cleanup_vendor_tree(vendor_root: pathlib.Path):
-    """Run all cleanup actions against the vendored tree without recloning.
-    - Remove VCS/CI metadata (.git, .github, .circleci) and housekeeping files
-      (.gitignore, .swiftlint.yml) from each package directory.
-    - Remove any leftover binary archives under Binaries/*.zip.
-    """
-    vr = pathlib.Path(vendor_root)
-    if not vr.exists():
-        return
-    for entry in sorted(vr.iterdir(), key=lambda p: p.name.lower()):
-        if not entry.is_dir():
-            continue
-        remove_git_dir(str(entry))
-        # Prune binary zip archives
-        bins = entry / "Binaries"
-        if bins.is_dir():
-            try:
-                for z in bins.glob("*.zip"):
-                    try:
-                        z.unlink()
-                        dim(f"Removed archive → {z}")
-                    except Exception as e:
-                        warn(f"Could not remove {z}: {e}")
-            except Exception:
-                pass
+    
 
 # ---------- Main ----------
 def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: str):
@@ -1178,7 +1163,7 @@ def main():
                     "Package": pkg_dir.name,
                     "Version": version,
                 })
-            update_readme_with_matrix(rows)
+            update_readme_with_matrix(rows, str(vendor_root))
             good("Cleanup complete; README matrix updated")
         except Exception as e:
             warn(f"Cleanup complete; README update skipped: {e}")

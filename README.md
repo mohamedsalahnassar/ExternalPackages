@@ -1,4 +1,4 @@
-# PodsToSPMConverter – Advanced Guide
+# ExternalPackages – Advanced Guide
 
 This repository vendors third‑party dependencies as Swift Packages into the `External/` folder and generates a single Swift package at the repository root (named `ExternalPackages`). It is designed to work entirely offline after the first run by converting remote binary targets to path‑based dependencies and by mirroring transitive package sources locally.
 

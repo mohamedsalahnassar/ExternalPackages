@@ -28,7 +28,7 @@
       "name": "AEPCore",
       "currentVersion": "4.2.2",
       "spmSupported": true,
-      "targetVersion": "5.4.0",
+      "targetVersion": "4.2.4",
       "git": "https://github.com/adobe/aepsdk-core-ios.git",
       "products": [
         "AEPCore",
@@ -76,7 +76,7 @@
       "name": "AEPRulesEngine",
       "currentVersion": "5.0.0",
       "spmSupported": true,
-      "targetVersion": "5.0.0",
+      "targetVersion": "4.0.0",
       "git": "https://github.com/adobe/aepsdk-rulesengine-ios.git",
       "products": [
         "AEPRulesEngine"
@@ -282,7 +282,11 @@
       "products": [
         "ISPageControl"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "postCloneCommands": [
+        "mkdir -p Sources/ISPageControl",
+        "if [ -f Sources/ISPageControl.swift ]; then mv -f Sources/ISPageControl.swift Sources/ISPageControl/ISPageControl.swift; fi"
+      ]
     },
     {
       "name": "InsiderMobile",

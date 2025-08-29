@@ -153,6 +153,17 @@
       "xcframeworks": []
     },
     {
+      "name": "DeviceKit",
+      "currentVersion": "5.5.0",
+      "spmSupported": true,
+      "targetVersion": "5.5.0",
+      "git": "https://github.com/devicekit/DeviceKit.git",
+      "products": [
+        "DeviceKit"
+      ],
+      "xcframeworks": []
+    },
+    {
       "name": "DGCharts",
       "currentVersion": "5.0.0",
       "spmSupported": true,
@@ -163,17 +174,6 @@
       ],
       "xcframeworks": [],
       "notes": "SPM added around Charts/DGCharts 4.0.1"
-    },
-    {
-      "name": "DeviceKit",
-      "currentVersion": "5.5.0",
-      "spmSupported": true,
-      "targetVersion": "5.5.0",
-      "git": "https://github.com/devicekit/DeviceKit.git",
-      "products": [
-        "DeviceKit"
-      ],
-      "xcframeworks": []
     },
     {
       "name": "Differentiator",
@@ -236,7 +236,7 @@
         "GoogleMaps"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required."
+      "notes": "SPM distribution uses Google’s SPM repo; upgrade required."
     },
     {
       "name": "GooglePlaces",
@@ -248,7 +248,20 @@
         "GooglePlaces"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required."
+      "notes": "SPM distribution uses Google’s SPM repo; upgrade required."
+    },
+    {
+      "name": "InsiderMobile",
+      "currentVersion": "1.2.2",
+      "spmSupported": true,
+      "targetVersion": "1.4.1",
+      "git": "https://github.com/useinsider/Insider-iOS-SDK.git",
+      "products": [
+        "InsiderMobile",
+        "InsiderMobileAdvancedNotification"
+      ],
+      "xcframeworks": [],
+      "notes": "Vendor docs indicate SPM support; confirm exact minimum."
     },
     {
       "name": "IOSSecuritySuite",
@@ -260,6 +273,18 @@
         "IOSSecuritySuite"
       ],
       "xcframeworks": []
+    },
+    {
+      "name": "iProov",
+      "currentVersion": "11.1.1",
+      "spmSupported": true,
+      "targetVersion": "11.1.1",
+      "git": "https://github.com/iProov/ios-spm.git",
+      "products": [
+        "iProov"
+      ],
+      "xcframeworks": [],
+      "notes": "SPM supported; confirm exact minimum for your SDK plan."
     },
     {
       "name": "IQKeyboardManagerSwift",
@@ -289,19 +314,6 @@
       ]
     },
     {
-      "name": "InsiderMobile",
-      "currentVersion": "1.2.2",
-      "spmSupported": true,
-      "targetVersion": "1.4.1",
-      "git": "https://github.com/useinsider/Insider-iOS-SDK.git",
-      "products": [
-        "InsiderMobile",
-        "InsiderMobileAdvancedNotification"
-      ],
-      "xcframeworks": [],
-      "notes": "Vendor docs indicate SPM support; confirm exact minimum."
-    },
-    {
       "name": "KeychainAccess",
       "currentVersion": "3.2.1",
       "spmSupported": true,
@@ -321,6 +333,28 @@
       "git": "https://github.com/onevcat/Kingfisher.git",
       "products": [
         "Kingfisher"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "lottie-ios",
+      "currentVersion": "4.5.0",
+      "spmSupported": true,
+      "targetVersion": "4.5.0",
+      "git": "https://github.com/airbnb/lottie-ios.git",
+      "products": [
+        "lottie-ios"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "Mantis",
+      "currentVersion": "2.8.0",
+      "spmSupported": true,
+      "targetVersion": "2.8.0",
+      "git": "https://github.com/guoyingtao/Mantis.git",
+      "products": [
+        "Mantis"
       ],
       "xcframeworks": []
     },
@@ -347,15 +381,16 @@
       "xcframeworks": []
     },
     {
-      "name": "Mantis",
-      "currentVersion": "2.8.0",
+      "name": "nanopb",
+      "currentVersion": "2.30908.0",
       "spmSupported": true,
-      "targetVersion": "2.8.0",
-      "git": "https://github.com/guoyingtao/Mantis.git",
+      "targetVersion": "0.3.9.8",
+      "git": "https://github.com/nanopb/nanopb.git",
       "products": [
-        "Mantis"
+        "nanopb"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "notes": "Brought transitively by Firebase in SPM; you don't add it directly."
     },
     {
       "name": "PromisesObjC",
@@ -406,17 +441,6 @@
       "xcframeworks": []
     },
     {
-      "name": "SVProgressHUD",
-      "currentVersion": "2.3.1",
-      "spmSupported": true,
-      "targetVersion": "2.3.1",
-      "git": "https://github.com/SVProgressHUD/SVProgressHUD.git",
-      "products": [
-        "SVProgressHUD"
-      ],
-      "xcframeworks": []
-    },
-    {
       "name": "SkeletonView",
       "currentVersion": "1.30.1",
       "spmSupported": true,
@@ -424,6 +448,17 @@
       "git": "https://github.com/Juanpe/SkeletonView.git",
       "products": [
         "SkeletonView"
+      ],
+      "xcframeworks": []
+    },
+    {
+      "name": "SVProgressHUD",
+      "currentVersion": "2.3.1",
+      "spmSupported": true,
+      "targetVersion": "2.3.1",
+      "git": "https://github.com/SVProgressHUD/SVProgressHUD.git",
+      "products": [
+        "SVProgressHUD"
       ],
       "xcframeworks": []
     },
@@ -460,41 +495,6 @@
         "ZIPFoundation"
       ],
       "xcframeworks": []
-    },
-    {
-      "name": "iProov",
-      "currentVersion": "11.1.1",
-      "spmSupported": true,
-      "targetVersion": "11.1.1",
-      "git": "https://github.com/iProov/ios-spm.git",
-      "products": [
-        "iProov"
-      ],
-      "xcframeworks": [],
-      "notes": "SPM supported; confirm exact minimum for your SDK plan."
-    },
-    {
-      "name": "lottie-ios",
-      "currentVersion": "4.5.0",
-      "spmSupported": true,
-      "targetVersion": "4.5.0",
-      "git": "https://github.com/airbnb/lottie-ios.git",
-      "products": [
-        "lottie-ios"
-      ],
-      "xcframeworks": []
-    },
-    {
-      "name": "nanopb",
-      "currentVersion": "2.30908.0",
-      "spmSupported": true,
-      "targetVersion": "0.3.9.8",
-      "git": "https://github.com/nanopb/nanopb.git",
-      "products": [
-        "nanopb"
-      ],
-      "xcframeworks": [],
-      "notes": "Brought transitively by Firebase in SPM; you don't add it directly."
     }
   ]
 }

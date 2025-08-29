@@ -352,7 +352,21 @@ def download_file(url, dest, token=None, extra_headers=None):
             obj = json.loads(txt)
         except Exception:
             return []
-        found = []
+        # Prioritize GitHub release asset fields when available
+        found: List[str] = []
+        try:
+            if isinstance(obj, dict) and isinstance(obj.get("assets"), list):
+                # Collect browser_download_url first, then asset url
+                for a in obj["assets"]:
+                    if isinstance(a, dict):
+                        u1 = a.get("browser_download_url")
+                        u2 = a.get("url")
+                        if isinstance(u1, str) and u1.startswith("http"):
+                            found.append(u1)
+                        if isinstance(u2, str) and u2.startswith("http"):
+                            found.append(u2)
+        except Exception:
+            pass
         def walk(o):
             if isinstance(o, dict):
                 for k, v in o.items():
@@ -372,6 +386,7 @@ def download_file(url, dest, token=None, extra_headers=None):
             return (
                 0 if u_l.endswith(".zip") else 1,
                 0 if ".xcframework" in u_l or ".artifactbundle" in u_l else 1,
+                0 if "browser_download_url" in u else 1,
                 len(u_l)
             )
         found = list(dict.fromkeys(found))

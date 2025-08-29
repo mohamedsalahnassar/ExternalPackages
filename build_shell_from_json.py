@@ -445,6 +445,30 @@ def print_table(rows):
     print()
 
 # ---------- Helpers ----------
+def run_post_commands(pkg_dir: str, cmds: List[str], env: Dict = None) -> Tuple[bool, List[str]]:
+    """Run post-clone commands inside the package directory. Returns (ok, errors)."""
+    if not cmds:
+        return True, []
+    errs: List[str] = []
+    for i, cmd in enumerate(cmds, 1):
+        if not cmd or not str(cmd).strip():
+            continue
+        # Basic placeholder interpolation
+        cmd_fmt = str(cmd)
+        try:
+            cmd_fmt = cmd_fmt.replace("{PKG_DIR}", pkg_dir)
+            cmd_fmt = cmd_fmt.replace("{VENDOR_DIR}", os.path.dirname(pkg_dir))
+            cmd_fmt = cmd_fmt.replace("{PKG_NAME}", os.path.basename(pkg_dir))
+        except Exception:
+            pass
+        step(f"post[{os.path.basename(pkg_dir)}] #{i}: {cmd_fmt}")
+        try:
+            subprocess.check_call(cmd_fmt, shell=True, cwd=pkg_dir, env=env or os.environ.copy())
+        except subprocess.CalledProcessError as e:
+            msg = f"post command failed (#{i}): {cmd_fmt} → {e}"
+            bad(msg)
+            errs.append(msg)
+    return len(errs) == 0, errs
 def remove_git_dir(path: str):
     g = os.path.join(path, ".git")
     if os.path.isdir(g):
@@ -651,6 +675,13 @@ def main():
             continue
         else:
             row["Clone"] = C.G + "OK" + C.X
+
+        # Run post-clone commands if specified in config
+        post_cmds = p.get("postCloneCommands") or p.get("postCommands") or []
+        if post_cmds:
+            ok_post, errs_post = run_post_commands(str(pkg_dir), post_cmds)
+            if not ok_post:
+                row["Errors"] = (row["Errors"] + "; " if row["Errors"] else "") + "; ".join(errs_post)
 
         # Parse Package.swift
         pkg_swift_path = pkg_dir / "Package.swift"

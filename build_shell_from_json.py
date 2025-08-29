@@ -485,6 +485,27 @@ def _products_for_package(cfg: Dict, name: str) -> List[str]:
             return [p for p in prods if p]
     return [name]
 
+_PKG_NAME_RE = re.compile(r"let\s+package\s*=\s*Package\s*\(\s*name\s*:\s*\"([^\"]+)\"", re.S)
+_PRODUCT_LIB_RE = re.compile(r"\.library\s*\(\s*name\s*:\s*\"([^\"]+)\"", re.S)
+
+def _declared_package_name(manifest_path: pathlib.Path) -> str:
+    try:
+        txt = manifest_path.read_text()
+        m = _PKG_NAME_RE.search(txt)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    # Fallback to directory name
+    return manifest_path.parent.name
+
+def _declared_products(manifest_path: pathlib.Path) -> List[str]:
+    try:
+        txt = manifest_path.read_text()
+    except Exception:
+        return []
+    return [m.group(1) for m in _PRODUCT_LIB_RE.finditer(txt)]
+
 def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
     """Scan Vendor dir for all packages that have a Package.swift and build include list."""
     includes: List[Dict] = []
@@ -497,7 +518,16 @@ def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
         if pkg_manifest.exists():
             name = entry.name
             products = _products_for_package(cfg, name)
-            includes.append({"name": name, "products": products})
+            # Allow optional config override for the dependency package name
+            declared = None
+            for e in (cfg.get("packages") or []):
+                if (e.get("name") or "").strip() == name:
+                    declared = (e.get("packageName") or "").strip() or None
+                    break
+            if not declared:
+                declared = _declared_package_name(pkg_manifest)
+            avail = _declared_products(pkg_manifest)
+            includes.append({"name": name, "products": products, "declaredName": declared, "availableProducts": avail})
     return includes
 
 def _cleanup_all_git(vendor_root: pathlib.Path):
@@ -532,12 +562,18 @@ def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: s
             dep_lines.append(f'        .package(path: "{rel_path}"),')
             seen_deps.add(name)
         products = p.get("products") or [name]
+        available = set(p.get("availableProducts") or [])
+        # Use dependency name as declared in dependencies list (path basename)
+        pkg_label = name
         for prod in products:
+            if available and prod not in available:
+                warn(f"Skipping unknown product '{prod}' in package '{name}' (available: {sorted(list(available))[:6]}...)")
+                continue
             # Attach each declared product from the package
             key = (prod, name)
             if key in seen_prod_pairs:
                 continue
-            prod_lines.append(f'                .product(name: "{prod}", package: "{name}"),')
+            prod_lines.append(f'                .product(name: "{prod}", package: "{pkg_label}"),')
             seen_prod_pairs.add(key)
 
     # Minimal Swift package manifest (mirrors earlier generator)

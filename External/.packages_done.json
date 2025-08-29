@@ -1,43 +1,43 @@
 {
   "abseil-cpp-swiftpm": {
     "version": "0.20200225.4",
-    "timestamp": "2025-08-29T09:48:50.476753Z"
+    "timestamp": "2025-08-29T12:29:10.685836Z"
   },
   "AEPAnalytics": {
     "version": "4.0.0",
-    "timestamp": "2025-08-29T09:48:51.908355Z"
+    "timestamp": "2025-08-29T12:29:12.189008Z"
   },
   "AEPAssurance": {
     "version": "4.1.1",
-    "timestamp": "2025-08-29T09:48:54.677944Z"
+    "timestamp": "2025-08-29T12:29:15.377570Z"
   },
   "AEPCore": {
     "version": "4.2.4",
-    "timestamp": "2025-08-29T09:48:56.386834Z"
+    "timestamp": "2025-08-29T12:29:17.115092Z"
   },
   "AEPEdge": {
     "version": "4.3.1",
-    "timestamp": "2025-08-29T09:49:00.179868Z"
+    "timestamp": "2025-08-29T12:29:20.537164Z"
   },
   "AEPEdgeConsent": {
     "version": "4.0.0",
-    "timestamp": "2025-08-29T09:49:01.822047Z"
+    "timestamp": "2025-08-29T12:29:22.141450Z"
   },
   "AEPEdgeIdentity": {
     "version": "4.0.0",
-    "timestamp": "2025-08-29T09:49:03.316068Z"
+    "timestamp": "2025-08-29T12:29:23.605036Z"
   },
   "AEPRulesEngine": {
     "version": "4.0.0",
-    "timestamp": "2025-08-29T09:49:04.839134Z"
+    "timestamp": "2025-08-29T12:29:25.065066Z"
   },
   "AEPTarget": {
     "version": "4.0.3",
-    "timestamp": "2025-08-29T09:49:06.460639Z"
+    "timestamp": "2025-08-29T12:29:26.555009Z"
   },
   "Alamofire": {
-    "version": "5.0.0",
-    "timestamp": "2025-08-29T09:49:08.143423Z"
+    "version": "4.9.1",
+    "timestamp": "2025-08-29T12:29:28.088472Z"
   },
   "AlamofireNetworkActivityLogger": {
     "version": "3.4.0",
@@ -45,186 +45,186 @@
   },
   "BigInt": {
     "version": "5.2.0",
-    "timestamp": "2025-08-29T09:49:35.350943Z"
+    "timestamp": "2025-08-29T12:31:37.267756Z"
   },
   "boringssl-swiftpm": {
     "version": "0.7.2",
-    "timestamp": "2025-08-29T09:49:40.206465Z"
+    "timestamp": "2025-08-29T12:31:42.990276Z"
   },
   "collectionconcurrencykit": {
     "version": "0.2.0",
-    "timestamp": "2025-08-29T09:49:41.750613Z"
+    "timestamp": "2025-08-29T12:31:44.361852Z"
   },
   "CryptoSwift": {
     "version": "1.4.1",
-    "timestamp": "2025-08-29T09:49:43.219149Z"
+    "timestamp": "2025-08-29T12:31:45.905598Z"
   },
   "DeviceKit": {
     "version": "5.5.0",
-    "timestamp": "2025-08-29T09:49:44.677025Z"
+    "timestamp": "2025-08-29T12:31:47.347312Z"
   },
   "DGCharts": {
     "version": "5.0.0",
-    "timestamp": "2025-08-29T09:49:47.261550Z"
+    "timestamp": "2025-08-29T12:31:50.026987Z"
   },
   "Firebase": {
     "version": "8.9.1",
-    "timestamp": "2025-08-29T09:49:51.404942Z"
+    "timestamp": "2025-08-29T12:31:53.892432Z"
   },
   "FloatingPanel": {
     "version": "2.8.1",
-    "timestamp": "2025-08-29T09:49:53.476779Z"
+    "timestamp": "2025-08-29T12:31:55.818802Z"
   },
   "googleappmeasurement": {
     "version": "8.9.1",
-    "timestamp": "2025-08-29T09:49:56.503076Z"
+    "timestamp": "2025-08-29T12:31:58.618535Z"
   },
   "GoogleDataTransport": {
     "version": "9.1.2",
-    "timestamp": "2025-08-29T09:49:58.085526Z"
+    "timestamp": "2025-08-29T12:32:00.158689Z"
   },
   "GoogleMaps": {
     "version": "8.3.1",
-    "timestamp": "2025-08-29T09:50:02.583086Z"
+    "timestamp": "2025-08-29T12:32:04.631363Z"
   },
   "GooglePlaces": {
     "version": "8.3.0",
-    "timestamp": "2025-08-29T09:50:04.591469Z"
+    "timestamp": "2025-08-29T12:32:06.700439Z"
   },
   "googleutilities": {
     "version": "7.13.3",
-    "timestamp": "2025-08-29T09:50:06.155200Z"
+    "timestamp": "2025-08-29T12:32:08.145284Z"
   },
   "grpc-swiftpm": {
     "version": "1.28.4",
-    "timestamp": "2025-08-29T09:50:10.064445Z"
+    "timestamp": "2025-08-29T12:32:14.522580Z"
   },
   "gtm-session-fetcher": {
     "version": "1.7.2",
-    "timestamp": "2025-08-29T09:50:11.274087Z"
+    "timestamp": "2025-08-29T12:32:15.490662Z"
   },
   "Insider": {
     "version": "1.4.1",
-    "timestamp": "2025-08-29T09:50:13.147576Z"
+    "timestamp": "2025-08-29T12:32:19.037508Z"
   },
   "IOSSecuritySuite": {
     "version": "2.0.2",
-    "timestamp": "2025-08-29T09:50:14.753380Z"
+    "timestamp": "2025-08-29T12:32:20.553913Z"
   },
   "iProov": {
     "version": "11.1.1",
-    "timestamp": "2025-08-29T09:50:16.869899Z"
+    "timestamp": "2025-08-29T12:32:22.993710Z"
   },
   "IQKeyboardManagerSwift": {
     "version": "6.3.0",
-    "timestamp": "2025-08-29T09:50:17.944297Z"
+    "timestamp": "2025-08-29T12:32:24.507370Z"
   },
   "ISPageControl": {
     "version": "0.1.0",
-    "timestamp": "2025-08-29T09:50:21.218379Z"
+    "timestamp": "2025-08-29T12:32:27.323168Z"
   },
   "KeychainAccess": {
     "version": "3.2.1",
-    "timestamp": "2025-08-29T09:50:22.289023Z"
+    "timestamp": "2025-08-29T12:32:28.375850Z"
   },
   "Kingfisher": {
     "version": "7.9.1",
-    "timestamp": "2025-08-29T09:50:23.905360Z"
+    "timestamp": "2025-08-29T12:32:30.008398Z"
   },
   "leveldb": {
     "version": "1.22.5",
-    "timestamp": "2025-08-29T09:50:25.431685Z"
+    "timestamp": "2025-08-29T12:32:31.628384Z"
   },
   "Lottie": {
     "version": "4.5.0",
-    "timestamp": "2025-08-29T09:50:35.946798Z"
+    "timestamp": "2025-08-29T12:32:42.955011Z"
   },
   "Mantis": {
     "version": "2.8.0",
-    "timestamp": "2025-08-29T09:50:39.152909Z"
+    "timestamp": "2025-08-29T12:32:46.012610Z"
   },
   "MEPSDK": {
     "version": "9.8.6",
-    "timestamp": "2025-08-29T09:50:52.942108Z"
+    "timestamp": "2025-08-29T12:32:59.300010Z"
   },
   "MGSwipeTableCell": {
     "version": "1.6.14",
-    "timestamp": "2025-08-29T09:50:54.608199Z"
+    "timestamp": "2025-08-29T12:33:01.024405Z"
   },
   "nanopb": {
     "version": "0.3.9.8",
-    "timestamp": "2025-08-29T09:50:56.163886Z"
+    "timestamp": "2025-08-29T12:33:02.667430Z"
   },
   "Promises": {
     "version": "2.0.0",
-    "timestamp": "2025-08-29T09:50:57.764421Z"
+    "timestamp": "2025-08-29T12:33:04.279673Z"
   },
   "RxDataSources": {
     "version": "5.0.0",
-    "timestamp": "2025-08-29T09:50:59.274848Z"
+    "timestamp": "2025-08-29T12:33:05.827488Z"
   },
   "RxKeyboard": {
     "version": "2.0.0",
-    "timestamp": "2025-08-29T09:51:00.712141Z"
+    "timestamp": "2025-08-29T12:33:07.336571Z"
   },
   "RxSwift": {
     "version": "6.6.0",
-    "timestamp": "2025-08-29T09:51:02.775644Z"
+    "timestamp": "2025-08-29T12:33:09.333890Z"
   },
   "RxSwiftExt": {
     "version": "6.2.1",
-    "timestamp": "2025-08-29T09:51:08.048193Z"
+    "timestamp": "2025-08-29T12:33:14.116667Z"
   },
   "SkeletonView": {
     "version": "1.30.1",
-    "timestamp": "2025-08-29T09:51:09.742653Z"
+    "timestamp": "2025-08-29T12:33:15.738250Z"
   },
   "sourcekitten": {
     "version": "0.33.1",
-    "timestamp": "2025-08-29T09:51:11.271877Z"
+    "timestamp": "2025-08-29T12:33:17.346903Z"
   },
   "SVProgressHUD": {
     "version": "2.3.1",
-    "timestamp": "2025-08-29T09:59:55.201343Z"
+    "timestamp": "2025-08-29T12:33:18.931150Z"
   },
   "swift-argument-parser": {
     "version": "1.2.3",
-    "timestamp": "2025-08-29T09:51:14.697866Z"
+    "timestamp": "2025-08-29T12:33:20.504112Z"
   },
   "swift-protobuf": {
     "version": "1.31.0",
-    "timestamp": "2025-08-29T09:51:17.564068Z"
+    "timestamp": "2025-08-29T12:33:24.300226Z"
   },
   "swift-syntax": {
     "version": "HEAD",
-    "timestamp": "2025-08-29T09:51:22.440466Z"
+    "timestamp": "2025-08-29T12:33:27.116767Z"
   },
   "SwiftLint": {
     "version": "0.50.1",
-    "timestamp": "2025-08-29T09:51:24.272761Z"
+    "timestamp": "2025-08-29T12:33:28.854339Z"
   },
   "swiftytexttable": {
     "version": "0.9.0",
-    "timestamp": "2025-08-29T09:51:25.873985Z"
+    "timestamp": "2025-08-29T12:33:30.454176Z"
   },
   "swxmlhash": {
     "version": "7.0.2",
-    "timestamp": "2025-08-29T09:51:27.459261Z"
+    "timestamp": "2025-08-29T12:33:31.885996Z"
   },
   "TensorFlowLiteC": {
     "version": "2.14.0",
-    "timestamp": "2025-08-29T09:51:31.099683Z"
+    "timestamp": "2025-08-29T12:33:37.066733Z"
   },
   "yams": {
     "version": "5.4.0",
-    "timestamp": "2025-08-29T09:51:33.017402Z"
+    "timestamp": "2025-08-29T12:33:38.754930Z"
   },
   "ZIPFoundation": {
     "version": "0.9.19",
-    "timestamp": "2025-08-29T09:51:35.043209Z"
+    "timestamp": "2025-08-29T12:33:40.651331Z"
   },
   "AppDynamicsAgent": {
     "version": "2023.10.1",
-    "timestamp": "2025-08-29T09:49:34.342135Z"
+    "timestamp": "2025-08-29T12:31:36.243468Z"
   }
 }

@@ -4,7 +4,7 @@
 import os, sys, json, re, shutil, subprocess, urllib.request, urllib.error, zipfile, tempfile, uuid, hashlib, argparse, pathlib
 import base64
 from urllib.parse import urlparse
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Set
 
 # ---------- Colors ----------
 class C:
@@ -667,18 +667,45 @@ def _rows_to_markdown(rows: List[Dict]) -> str:
     This helper converts a list of row dicts to lines; use merge logic in
     update_readme_with_matrix to preserve existing entries.
     """
-    md = ["| Package | Version |", "|---|---|"]
+    md = ["| Package | Version | Size |", "|---|---|---:|"]
     for r in sorted(rows, key=lambda x: (x.get('Package') or '').lower()):
-        md.append(f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} |")
+        md.append(
+            f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} | "
+            f"{_markdown_escape(r.get('Size') or '')} |"
+        )
     return "\n".join(md)
 
-def update_readme_with_matrix(rows: List[Dict]):
+def _dir_size_bytes(p: pathlib.Path) -> int:
+    total = 0
+    if not p.exists():
+        return 0
+    for root, dirs, files in os.walk(p):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(root, f))
+            except Exception:
+                pass
+    return total
+
+def _human_size(n: int) -> str:
+    units = ['B','KB','MB','GB','TB']
+    size = float(n)
+    for u in units:
+        if size < 1024 or u == units[-1]:
+            return f"{size:.1f} {u}"
+        size /= 1024
+
+def update_readme_with_matrix(rows: List[Dict], vendor_root: str):
     import datetime, pathlib, re
     readme = pathlib.Path("README.md")
     # Build mapping for new rows
-    new_map = {str(r.get('Package') or ''): str(r.get('Version') or '') for r in rows}
+    new_map: Dict[str, Dict[str, str]] = {}
+    for r in rows:
+        pkg = str(r.get('Package') or '')
+        ver = str(r.get('Version') or '')
+        new_map[pkg] = {"Version": ver}
     # Parse existing matrix (if any) and merge so partial runs keep full list
-    existing_map: Dict[str, str] = {}
+    existing_map: Dict[str, Dict[str, str]] = {}
     if readme.exists():
         text = readme.read_text()
         m = re.search(r"<!-- BEGIN VENDOR MATRIX -->([\s\S]*?)<!-- END VENDOR MATRIX -->", text)
@@ -692,12 +719,25 @@ def update_readme_with_matrix(rows: List[Dict]):
                     continue
                 parts = [p.strip() for p in line.strip('|').split('|')]
                 if len(parts) >= 2 and parts[0] and parts[0] != 'Package':
-                    existing_map[parts[0]] = parts[1]
+                    ver = parts[1]
+                    size = parts[2] if len(parts) > 2 else ''
+                    existing_map[parts[0]] = {"Version": ver, "Size": size}
     # Merge: new rows override existing; keep all others
-    merged = existing_map.copy()
-    merged.update({k: v for k, v in new_map.items() if k})
+    merged: Dict[str, Dict[str, str]] = dict(existing_map)
+    for k, v in new_map.items():
+        if not k:
+            continue
+        if k not in merged:
+            merged[k] = {}
+        merged[k].update(v)
+    # Fill sizes from current vendor tree if missing or to refresh
+    vr = pathlib.Path(vendor_root)
+    for pkg in list(merged.keys()):
+        pdir = vr / pkg
+        size_str = _human_size(_dir_size_bytes(pdir)) if pdir.exists() else ''
+        merged[pkg]['Size'] = size_str
     # Convert merged back to rows for rendering
-    merged_rows = [{"Package": k, "Version": merged[k]} for k in merged.keys()]
+    merged_rows = [{"Package": k, "Version": merged[k].get('Version',''), "Size": merged[k].get('Size','')} for k in merged.keys()]
     matrix = _rows_to_markdown(merged_rows)
     stamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + 'Z'
     block = f"<!-- BEGIN VENDOR MATRIX -->\nLast updated: `{stamp}`\n\n{matrix}\n<!-- END VENDOR MATRIX -->\n"
@@ -824,6 +864,108 @@ def _cleanup_all_git(vendor_root: pathlib.Path):
     for entry in vendor_root.iterdir():
         if entry.is_dir():
             remove_git_dir(str(entry))
+
+def _cleanup_vendor_tree(vendor_root: pathlib.Path, only: Optional[Set[str]] = None, deep: bool = False):
+    """Run all cleanup actions against the vendored tree without recloning.
+    - Remove VCS/CI metadata (.git, .github, .circleci) and housekeeping files (.gitignore, .swiftlint.yml).
+    - Remove any leftover binary archives under Binaries/*.zip.
+    - If deep=True, trim content based on Package.swift declarations.
+    """
+    vr = pathlib.Path(vendor_root)
+    if not vr.exists():
+        return
+    for entry in sorted(vr.iterdir(), key=lambda p: p.name.lower()):
+        if not entry.is_dir():
+            continue
+        if only and entry.name not in only:
+            continue
+        remove_git_dir(str(entry))
+        # Prune binary zip archives
+        bins = entry / "Binaries"
+        if bins.is_dir():
+            for z in bins.glob("*.zip"):
+                try:
+                    z.unlink()
+                    dim(f"Removed archive → {z}")
+                except Exception as e:
+                    warn(f"Could not remove {z}: {e}")
+        if deep:
+            try:
+                _cleanup_deep_package(entry)
+            except Exception as e:
+                warn(f"Deep cleanup failed for {entry.name}: {e}")
+
+TARGET_RE = re.compile(r"\.target\s*\(\s*name\s*:\s*\"([^\"]+)\"(?P<body>.*?)\)", re.S)
+TEST_TARGET_RE = re.compile(r"\.testTarget\s*\(\s*name\s*:\s*\"([^\"]+)\"(?P<body>.*?)\)", re.S)
+PATH_RE = re.compile(r"path\s*:\s*\"([^\"]+)\"")
+RES_RE = re.compile(r"\.(?:process|copy)\(\s*\"([^\"]+)\"\s*\)")
+PUB_HDR_RE = re.compile(r"publicHeadersPath\s*:\s*\"([^\"]+)\"")
+BIN_TGT_RE = re.compile(r"\.binaryTarget\s*\(\s*name\s*:\s*\"([^\"]+)\"\s*,\s*path\s*:\s*\"([^\"]+)\"", re.S)
+
+def _cleanup_deep_package(pkg_dir: pathlib.Path):
+    """Remove files not required by Package.swift to build.
+    Keeps: Package.swift, target source paths, binary targets (Binaries/*), and declared resources/public headers.
+    Removes tests, examples, docs and unrelated files.
+    """
+    manifest = pkg_dir / 'Package.swift'
+    if not manifest.exists():
+        return
+    txt = manifest.read_text()
+    keep: Set[pathlib.Path] = set()
+    # Always keep manifest and Binaries dir
+    keep.add(manifest)
+    bins_dir = pkg_dir / 'Binaries'
+    if bins_dir.exists():
+        keep.add(bins_dir)
+    # Binary targets
+    for m in BIN_TGT_RE.finditer(txt):
+        p = (pkg_dir / m.group(2)).resolve()
+        keep.add(p)
+    # Regular targets (skip test targets)
+    for m in TARGET_RE.finditer(txt):
+        body = m.group('body') or ''
+        mpath = PATH_RE.search(body)
+        if mpath:
+            tpath = (pkg_dir / mpath.group(1)).resolve()
+        else:
+            # conventional default
+            tpath = (pkg_dir / 'Sources' / m.group(1)).resolve()
+        keep.add(tpath)
+        # resources under target path
+        for rm in RES_RE.finditer(body):
+            rpath = (tpath / rm.group(1)).resolve()
+            keep.add(rpath)
+        # public headers
+        ph = PUB_HDR_RE.search(body)
+        if ph:
+            keep.add((pkg_dir / ph.group(1)).resolve())
+    # Remove Tests, Examples, docs extras
+    remove_candidates = []
+    top_level = list(pkg_dir.iterdir())
+    for item in top_level:
+        if item.name in {'.git', '.github', '.circleci', '.gitignore', '.swiftlint.yml', 'Tests', 'Examples', 'Example', 'Docs', 'Documentation'}:
+            remove_candidates.append(item)
+            continue
+        # Skip if inside keep set
+        in_keep = False
+        for k in keep:
+            try:
+                if item.resolve() == k or (k.is_dir() and str(item.resolve()).startswith(str(k))):
+                    in_keep = True
+                    break
+            except Exception:
+                pass
+        if not in_keep and item.name != 'Package.swift':
+            remove_candidates.append(item)
+    for c in remove_candidates:
+        try:
+            if c.is_dir():
+                shutil.rmtree(c)
+            else:
+                c.unlink()
+            dim(f"Deep cleaned → {c}")
+        except Exception as e:
+            warn(f"Could not remove {c}: {e}")
 
 def _cleanup_vendor_tree(vendor_root: pathlib.Path):
     """Run all cleanup actions against the vendored tree without recloning.
@@ -1161,7 +1303,7 @@ def main():
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
     # Update README live matrix
     try:
-        update_readme_with_matrix(rows_for_print)
+        update_readme_with_matrix(rows_for_print, str(vendor_root))
         good("README matrix updated")
     except Exception as e:
         warn(f"Could not update README matrix: {e}")

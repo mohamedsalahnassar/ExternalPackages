@@ -114,9 +114,9 @@
     },
     {
       "name": "Alamofire",
-      "currentVersion": "5.0.0",
+      "currentVersion": "4.9.1",
       "spmSupported": true,
-      "targetVersion": "5.0.0",
+      "targetVersion": "4.9.1",
       "git": "https://github.com/Alamofire/Alamofire.git",
       "products": [
         "Alamofire"
@@ -124,19 +124,6 @@
       "xcframeworks": [],
       "notes": "SPM introduced in 5.x",
       "packageName": "Alamofire"
-    },
-    {
-      "name": "AlamofireNetworkActivityLogger",
-      "currentVersion": "2.4.0",
-      "spmSupported": true,
-      "targetVersion": "3.4.0",
-      "git": "https://github.com/konkab/AlamofireNetworkActivityLogger.git",
-      "products": [
-        "AlamofireNetworkActivityLogger"
-      ],
-      "xcframeworks": [],
-      "notes": "Use a fork that supports SPM (e.g., konkab/AlamofireNetworkActivityLogger >=3.x), or replace with NetworkActivityLogger alternative.",
-      "packageName": "AlamofireNetworkActivityLogger"
     },
     {
       "name": "AppDynamicsAgent",

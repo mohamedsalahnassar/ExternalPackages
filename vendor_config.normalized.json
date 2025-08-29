@@ -3,6 +3,16 @@
   "vendorDir": "Vendor",
   "packages": [
     {
+      "name": "abseil-cpp-swiftpm",
+      "currentVersion": "0.20200225.4",
+      "spmSupported": true,
+      "targetVersion": "0.20200225.4",
+      "git": "https://github.com/firebase/abseil-cpp-SwiftPM.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
       "name": "AEPAnalytics",
       "currentVersion": "4.0.0",
       "spmSupported": true,
@@ -154,6 +164,26 @@
       "packageName": "BigInt"
     },
     {
+      "name": "boringssl-swiftpm",
+      "currentVersion": "0.7.2",
+      "spmSupported": true,
+      "targetVersion": "0.7.2",
+      "git": "https://github.com/firebase/boringssl-SwiftPM.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "collectionconcurrencykit",
+      "currentVersion": "0.2.0",
+      "spmSupported": true,
+      "targetVersion": "0.2.0",
+      "git": "https://github.com/JohnSundell/CollectionConcurrencyKit.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
       "name": "CryptoSwift",
       "currentVersion": "1.4.1",
       "spmSupported": true,
@@ -191,19 +221,6 @@
       "packageName": "DGCharts"
     },
     {
-      "name": "RxDataSources",
-      "currentVersion": "5.0.0",
-      "spmSupported": true,
-      "targetVersion": "5.0.0",
-      "git": "https://github.com/RxSwiftCommunity/RxDataSources.git",
-      "products": [
-        "Differentiator",
-        "RxDataSources"
-      ],
-      "xcframeworks": [],
-      "packageName": "RxDataSources"
-    },
-    {
       "name": "Firebase",
       "currentVersion": "8.9.0",
       "spmSupported": true,
@@ -230,6 +247,16 @@
       ],
       "xcframeworks": [],
       "packageName": "FloatingPanel"
+    },
+    {
+      "name": "googleappmeasurement",
+      "currentVersion": "8.9.1",
+      "spmSupported": true,
+      "targetVersion": "8.9.1",
+      "git": "https://github.com/google/GoogleAppMeasurement.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
     },
     {
       "name": "GoogleDataTransport",
@@ -268,6 +295,36 @@
       "xcframeworks": [],
       "notes": "SPM distribution uses Google’s SPM repo; upgrade required.",
       "packageName": "GooglePlaces"
+    },
+    {
+      "name": "googleutilities",
+      "currentVersion": "7.13.3",
+      "spmSupported": true,
+      "targetVersion": "7.13.3",
+      "git": "https://github.com/google/GoogleUtilities.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "grpc-swiftpm",
+      "currentVersion": "1.28.4",
+      "spmSupported": true,
+      "targetVersion": "1.28.4",
+      "git": "https://github.com/firebase/grpc-SwiftPM.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "gtm-session-fetcher",
+      "currentVersion": "1.7.2",
+      "spmSupported": true,
+      "targetVersion": "1.7.2",
+      "git": "https://github.com/google/gtm-session-fetcher.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
     },
     {
       "name": "Insider",
@@ -363,6 +420,16 @@
       "packageName": "Kingfisher"
     },
     {
+      "name": "leveldb",
+      "currentVersion": "1.22.5",
+      "spmSupported": true,
+      "targetVersion": "1.22.5",
+      "git": "https://github.com/firebase/leveldb.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
       "name": "Lottie",
       "currentVersion": "4.5.0",
       "spmSupported": true,
@@ -436,6 +503,31 @@
       "packageName": "Promises"
     },
     {
+      "name": "RxDataSources",
+      "currentVersion": "5.0.0",
+      "spmSupported": true,
+      "targetVersion": "5.0.0",
+      "git": "https://github.com/RxSwiftCommunity/RxDataSources.git",
+      "products": [
+        "Differentiator",
+        "RxDataSources"
+      ],
+      "xcframeworks": [],
+      "packageName": "RxDataSources"
+    },
+    {
+      "name": "RxKeyboard",
+      "currentVersion": "2.0.0",
+      "spmSupported": true,
+      "targetVersion": "2.0.0",
+      "git": "https://github.com/RxSwiftCommunity/RxKeyboard.git",
+      "products": [
+        "RxKeyboard"
+      ],
+      "xcframeworks": [],
+      "packageName": "RxKeyboard"
+    },
+    {
       "name": "RxSwift",
       "currentVersion": "6.6.0",
       "spmSupported": true,
@@ -450,18 +542,6 @@
       ],
       "xcframeworks": [],
       "packageName": "RxSwift"
-    },
-    {
-      "name": "RxKeyboard",
-      "currentVersion": "2.0.0",
-      "spmSupported": true,
-      "targetVersion": "2.0.0",
-      "git": "https://github.com/RxSwiftCommunity/RxKeyboard.git",
-      "products": [
-        "RxKeyboard"
-      ],
-      "xcframeworks": [],
-      "packageName": "RxKeyboard"
     },
     {
       "name": "RxSwiftExt",
@@ -488,6 +568,16 @@
       "packageName": "SkeletonView"
     },
     {
+      "name": "sourcekitten",
+      "currentVersion": "0.33.1",
+      "spmSupported": true,
+      "targetVersion": "0.33.1",
+      "git": "https://github.com/jpsim/SourceKitten.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
       "name": "SVProgressHUD",
       "currentVersion": "2.3.1",
       "spmSupported": true,
@@ -498,6 +588,36 @@
       ],
       "xcframeworks": [],
       "packageName": "SVProgressHUD"
+    },
+    {
+      "name": "swift-argument-parser",
+      "currentVersion": "1.2.3",
+      "spmSupported": true,
+      "targetVersion": "1.2.3",
+      "git": "https://github.com/apple/swift-argument-parser.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "swift-protobuf",
+      "currentVersion": "1.31.0",
+      "spmSupported": true,
+      "targetVersion": "1.31.0",
+      "git": "https://github.com/apple/swift-protobuf.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "swift-syntax",
+      "currentVersion": "",
+      "spmSupported": true,
+      "targetVersion": "",
+      "git": "https://github.com/apple/swift-syntax.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
     },
     {
       "name": "SwiftLint",
@@ -512,6 +632,26 @@
       "packageName": "SwiftLint"
     },
     {
+      "name": "swiftytexttable",
+      "currentVersion": "0.9.0",
+      "spmSupported": true,
+      "targetVersion": "0.9.0",
+      "git": "https://github.com/scottrhoyt/SwiftyTextTable.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
+      "name": "swxmlhash",
+      "currentVersion": "7.0.2",
+      "spmSupported": true,
+      "targetVersion": "7.0.2",
+      "git": "https://github.com/drmohundro/SWXMLHash.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
+    },
+    {
       "name": "TensorFlowLiteC",
       "currentVersion": "2.11.0",
       "spmSupported": true,
@@ -523,6 +663,16 @@
       "xcframeworks": [],
       "notes": "Unofficial SPM; consider vendoring binary if policies require official sources",
       "packageName": "TensorFlowLiteC"
+    },
+    {
+      "name": "yams",
+      "currentVersion": "5.4.0",
+      "spmSupported": true,
+      "targetVersion": "5.4.0",
+      "git": "https://github.com/jpsim/Yams.git",
+      "products": [],
+      "xcframeworks": [],
+      "packageName": ""
     },
     {
       "name": "ZIPFoundation",

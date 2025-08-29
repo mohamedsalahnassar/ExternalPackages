@@ -335,6 +335,10 @@ def download_file(url, dest, token=None, extra_headers=None):
         api_key = os.environ.get("ARTIFACTORY_API_KEY") or os.environ.get("APPD_ARTIFACTORY_API_KEY")
         if api_key and not headers.get("X-JFrog-Art-Api") and not headers.get("Authorization"):
             headers["X-JFrog-Art-Api"] = api_key
+        # Inject bearer access token if provided via env
+        bearer = os.environ.get("ARTIFACTORY_ACCESS_TOKEN") or os.environ.get("APPD_ARTIFACTORY_ACCESS_TOKEN")
+        if bearer and not headers.get("Authorization"):
+            headers["Authorization"] = f"Bearer {bearer}"
         # Basic auth if provided
         basic = os.environ.get("ARTIFACTORY_BASIC_AUTH")
         user = os.environ.get("ARTIFACTORY_USER") or os.environ.get("APPD_ARTIFACTORY_USER")
@@ -393,6 +397,93 @@ def download_file(url, dest, token=None, extra_headers=None):
         found.sort(key=score)
         return found
 
+    def _extract_urls_from_html_bytes(b: bytes, base_url: str):
+        """Very light HTML href/src/meta refresh extractor returning candidate URLs.
+        We don't depend on an HTML parser to keep the script self‑contained.
+        """
+        try:
+            txt = b.decode("utf-8", errors="ignore")
+        except Exception:
+            return []
+        urls: List[str] = []
+        # href/src attributes
+        for m in re.finditer(r'(?:href|src)\s*=\s*[\'\"]([^\'\"]+)[\'\"]', txt, re.I):
+            urls.append(m.group(1))
+        # meta refresh
+        m = re.search(r'<meta[^>]+http-equiv\s*=\s*[\'\"]refresh[\'\"][^>]+content\s*=\s*[\'\"]\s*\d+\s*;\s*url=([^\'\"]+)[\'\"]', txt, re.I)
+        if m:
+            urls.append(m.group(1))
+        # simple JS redirections
+        for m in re.finditer(r'location\.(?:href|assign)\s*=\s*[\'\"]([^\'\"]+)[\'\"]', txt, re.I):
+            urls.append(m.group(1))
+        # data attributes commonly used by download buttons
+        for m in re.finditer(r'data-(?:redirect-url|download-url)\s*=\s*[\'\"]([^\'\"]+)[\'\"]', txt, re.I):
+            urls.append(m.group(1))
+        # resolve relative URLs
+        try:
+            from urllib.parse import urljoin
+            urls = [urljoin(base_url, u) for u in urls]
+        except Exception:
+            pass
+        # Prefer direct artifacts
+        def score(u: str):
+            u_l = u.lower()
+            return (
+                0 if u_l.endswith('.zip') else 1,
+                0 if '.xcframework' in u_l or '.artifactbundle' in u_l else 1,
+                0 if 'artifactory' in u_l else 1,
+                len(u_l)
+            )
+        urls = list(dict.fromkeys(urls))
+        urls.sort(key=score)
+        return urls
+
+    def _try_jfrog_storage_api(orig_url: str, h: Dict[str, str]) -> Tuple[bool, str]:
+        # Convert /artifactory/<path> to /artifactory/api/storage/<path> and read downloadUri
+        try:
+            u = urlparse(orig_url)
+            if '/artifactory/' not in u.path:
+                return False, ''
+            api_path = u.path.replace('/artifactory/', '/artifactory/api/storage/', 1)
+            api_url = f"{u.scheme}://{u.netloc}{api_path}"
+            req_h = dict(h)
+            req_h['Accept'] = 'application/json'
+            req = urllib.request.Request(api_url, headers=req_h)
+            with urllib.request.urlopen(req, timeout=120) as r2:
+                body2 = r2.read()
+            try:
+                obj = json.loads(body2.decode('utf-8', errors='ignore'))
+                dl = obj.get('downloadUri') or obj.get('uri')
+                if isinstance(dl, str) and dl.startswith('http'):
+                    return True, dl
+            except Exception:
+                return False, ''
+        except Exception:
+            return False, ''
+        return False, ''
+
+    def _try_jfrog_download_api(orig_url: str, h: Dict[str, str]) -> Tuple[bool, str]:
+        """Use Artifactory download API to get a direct redirect to filestore/S3.
+        GET /artifactory/api/download/{repoKey}/{path}?useRedirect=true
+        """
+        try:
+            u = urlparse(orig_url)
+            if '/artifactory/' not in u.path:
+                return False, ''
+            parts = u.path.split('/artifactory/', 1)[1]
+            # Avoid recursion if we're already using the download API
+            if parts.startswith('api/download/'):
+                return False, ''
+            if not parts:
+                return False, ''
+            # parts starts with '<repoKey>/rest/of/path'
+            api_url = f"{u.scheme}://{u.netloc}/artifactory/api/download/{parts}?useRedirect=true"
+            # Return the download API URL; the caller will fetch it (urllib follows redirects)
+            return True, api_url
+        except Exception:
+            return False, ''
+        return False, ''
+
     def attempt(h, tag):
         try:
             req = urllib.request.Request(url, headers=h)
@@ -417,6 +508,30 @@ def download_file(url, dest, token=None, extra_headers=None):
                                 good(f"Resolved nested download URL → {u2}")
                                 return True, None
                         # fallthrough to treat as non-zip
+                    # If HTML landing page (e.g., Artifactory link generator), try to extract next hop
+                    if "html" in (ct or "").lower() or body.lstrip().startswith((b"<!DOCTYPE html", b"<html")):
+                        # Try Artifactory storage API to get a direct downloadUri first
+                        ok_api, api_url = _try_jfrog_storage_api(url, h)
+                        if ok_api:
+                            ok_api_dl, err_api_dl = download_file(api_url, dest, token=token, extra_headers=h)
+                            if ok_api_dl and zipfile.is_zipfile(dest):
+                                good(f"Resolved Artifactory storage API → {api_url}")
+                                return True, None
+                        # Try Artifactory download API to get a redirect to filestore/S3
+                        ok_dl, dl_url = _try_jfrog_download_api(url, h)
+                        if ok_dl:
+                            ok_dl2, err_dl2 = download_file(dl_url, dest, token=token, extra_headers=h)
+                            if ok_dl2 and zipfile.is_zipfile(dest):
+                                good(f"Resolved Artifactory download API → {dl_url}")
+                                return True, None
+                        # Fallback to parsing HTML for links
+                        hops = _extract_urls_from_html_bytes(body, url)
+                        for u3 in hops:
+                            ok_hop, err_hop = download_file(u3, dest, token=token, extra_headers=h)
+                            if ok_hop and zipfile.is_zipfile(dest):
+                                good(f"Followed HTML redirect/link → {u3}")
+                                return True, None
+                        # fallthrough
                     # Read a few bytes to hint what we got
                     head = b""
                     try:
@@ -438,6 +553,25 @@ def download_file(url, dest, token=None, extra_headers=None):
             return False, f"{tag}: URLError: {e.reason}"
         except Exception as e:
             return False, f"{tag}: {e}"
+    # Special preflight for JFrog/Artifactory: try API-based redirect before raw URL
+    pre_err = None
+    if ("jfrog" in (host or "")) or ("artifactory" in (host or "")):
+        # Avoid preflight recursion if already using download API
+        if '/artifactory/api/download/' not in (u.path or ''):
+            ok_dl, dl_url = _try_jfrog_download_api(url, headers)
+            if ok_dl:
+                ok_pre, err_pre = download_file(dl_url, dest, token=token, extra_headers=headers)
+                if ok_pre:
+                    return True, None
+                pre_err = err_pre
+        else:
+            ok_api, api_url = _try_jfrog_storage_api(url, headers)
+            if ok_api:
+                ok_pre2, err_pre2 = download_file(api_url, dest, token=token, extra_headers=headers)
+                if ok_pre2:
+                    return True, None
+                pre_err = err_pre2
+
     ok, err = attempt(headers, "initial")
     if ok:
         return True, None
@@ -459,7 +593,7 @@ def download_file(url, dest, token=None, extra_headers=None):
             return True, None
         err = err3 or err
     # Some Artifactory URLs need '?download' to return raw bytes
-    if ((err or "").startswith("initial: not a zip file") or "not a zip file" in (err or "")) and "download" not in (url or ""):
+    if ((err or "").startswith("initial: not a zip file") or "not a zip file" in (err or "")) and "download" not in (url or "") and not (("jfrog" in (host or "")) or ("artifactory" in (host or ""))):
         sep = '&' if ('?' in url) else '?'
         url2 = f"{url}{sep}download"
         try:
@@ -467,10 +601,10 @@ def download_file(url, dest, token=None, extra_headers=None):
             ok3, err3 = download_file(url2, dest, token=token, extra_headers=req_headers)
             if ok3:
                 return True, None
-            return False, err3 or err
+            return False, err3 or err or pre_err
         except Exception:
-            return False, err
-    return False, err
+            return False, err or pre_err
+    return False, err or pre_err
 def extract_spm_artifact(zip_path, out_dir, expected_name=None):
     temp_dir = os.path.join(out_dir, f".extract_{uuid.uuid4().hex}")
     try:

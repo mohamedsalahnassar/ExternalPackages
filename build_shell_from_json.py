@@ -220,8 +220,12 @@ def patch_manifest_to_path(pkg_swift_path: str, target_name: str, rel_path: str)
         body = re.sub(r'checksum\s*:\s*"[a-fA-F0-9]{64}"', '', body)
         # Ensure only one of url/path exists (prefer path)
         body = re.sub(r'\s*,\s*,', ',', body)
+        # Remove trailing comma before closing of binaryTarget argument list if present
+        body = re.sub(r',\s*$', '', body.strip())
         return f'.binaryTarget(name: "{target_name}", {body})'
     new = BIN_RE.sub(lambda m: repl(m) if m.group("name")==target_name else m.group(0), txt)
+    # Also normalize any accidental trailing commas right before a closing parenthesis
+    new = re.sub(r'(\.binaryTarget\([^\)]*?)\,\s*\)', r'\1)', new, flags=re.S)
     pathlib.Path(pkg_swift_path).write_text(new)
 
 def _normalize_git_url(u: str) -> str:

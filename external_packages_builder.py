@@ -812,6 +812,17 @@ def _products_for_package(cfg: Dict, name: str) -> List[str]:
             return [p for p in (prods or []) if p]
     return [name]
 
+def _exports_for_package(cfg: Dict, name: str) -> Optional[List[str]]:
+    for e in (cfg.get("packages") or []):
+        if (e.get("name") or "").strip() == name:
+            if "exports" in e:
+                exps = e.get("exports")
+                exps = exps if exps is not None else []
+                return [p for p in (exps or []) if p]
+            else:
+                return None
+    return None
+
 _PKG_NAME_RE = re.compile(r"let\s+package\s*=\s*Package\s*\(\s*name\s*:\s*\"([^\"]+)\"", re.S)
 _PRODUCT_LIB_RE = re.compile(r"\.library\s*\(\s*name\s*:\s*\"([^\"]+)\"", re.S)
 
@@ -845,6 +856,7 @@ def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
         if pkg_manifest.exists():
             name = entry.name
             products = _products_for_package(cfg, name)
+            exports = _exports_for_package(cfg, name)
             # Allow optional config override for the dependency package name
             declared = None
             for e in (cfg.get("packages") or []):
@@ -854,7 +866,10 @@ def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
             if not declared:
                 declared = _declared_package_name(pkg_manifest)
             avail = _declared_products(pkg_manifest)
-            includes.append({"name": name, "products": products, "declaredName": declared, "availableProducts": avail})
+            entry_info = {"name": name, "products": products, "declaredName": declared, "availableProducts": avail}
+            if exports is not None:
+                entry_info["exports"] = exports
+            includes.append(entry_info)
     return includes
 
 def _cleanup_all_git(vendor_root: pathlib.Path):
@@ -1073,9 +1088,11 @@ let package = Package(
     # Export only the products that were actually added to the target deps
     added_products = set()
     for p in included_pkgs:
+        export_names = p.get("exports")
         products = p.get("products") or []
         available = set(p.get("availableProducts") or [])
-        for prod in products:
+        candidates = export_names if export_names is not None else products
+        for prod in candidates:
             if available and prod not in available:
                 continue
             added_products.add(prod)

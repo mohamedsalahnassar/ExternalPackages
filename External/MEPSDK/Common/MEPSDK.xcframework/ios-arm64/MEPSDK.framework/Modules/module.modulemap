@@ -1,0 +1,11 @@
+framework module MEPSDK {
+  umbrella header "MEPSDK.h"
+  export *
+
+  module * { export * }
+}
+
+module MEPSDK.Swift {
+  header "MEPSDK-Swift.h"
+  requires objc
+}

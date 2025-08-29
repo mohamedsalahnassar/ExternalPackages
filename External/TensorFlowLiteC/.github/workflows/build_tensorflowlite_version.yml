@@ -1,0 +1,182 @@
+name: Build Specific TensorFlowLiteC Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version to build'
+        required: true
+      
+permissions:
+  contents: write
+  
+jobs:
+  clone_and_build:
+    name: Clone TensorFlow and Build TensorFlowLiteC / TensorFlowLiteCCoreML
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Check if Tag Exists and Build
+        id: check-tag
+        uses: mukunku/tag-exists-action@v1.6.0
+        with:
+          tag: ${{ github.event.inputs.release_version }}
+          
+      - name: Create Release Branch
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          git checkout -b release-${{ github.event.inputs.release_version }}
+        
+      - name: Prepare XCFramework Directory
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}
+          mkdir -p TensorFlowLiteC/Device
+          mkdir -p TensorFlowLiteC/Simulator
+          mkdir -p TensorFlowLiteCCoreML/Device
+          mkdir -p TensorFlowLiteCCoreML/Simulator
+          
+      - name: Build TensorFlowLiteC/TensorFlowLiteCCoreML on Simulator
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}/App
+          
+          cp -f Podfile.version Podfile
+          sed -i '' -e "s|{{VERSION}}|${{ github.event.inputs.release_version }}|g" Podfile
+          
+          pod install
+
+          cp -R Pods/TensorFlowLiteC/Frameworks/TensorFlowLiteC.xcframework/ios-arm64_x86_64-simulator/TensorFlowLiteC.framework ${{ github.workspace }}/TensorFlowLiteC/Simulator
+          cp ${{ github.workspace }}/Info-TensorFlowLiteC-Simulator.plist ${{ github.workspace }}/TensorFlowLiteC/Simulator/TensorFlowLiteC.framework/Info.plist
+          
+          cp -R Pods/TensorFlowLiteC/Frameworks/TensorFlowLiteCCoreML.xcframework/ios-arm64_x86_64-simulator/TensorFlowLiteCCoreML.framework ${{ github.workspace }}/TensorFlowLiteCCoreML/Simulator
+          cp ${{ github.workspace }}/Info-TensorFlowLiteCCoreML-Simulator.plist ${{ github.workspace }}/TensorFlowLiteCCoreML/Simulator/TensorFlowLiteCCoreML.framework/Info.plist
+          
+      - name: Clone TensorFlow Repository
+        if: steps.check-tag.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          repository: 'tensorflow/tensorflow'
+          path: '${{ github.workspace }}/tensorflow'
+          fetch-tags: true
+          ref: 'v${{ github.event.inputs.release_version }}'
+          
+      - name: Setup Bazel Version
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          echo "USE_BAZEL_VERSION=$(head -n 1 ${{ github.workspace }}/tensorflow/.bazelversion)" >> $GITHUB_ENV
+          
+      - name: Set up Bazel
+        if: steps.check-tag.outputs.exists == 'false'
+        uses: bazel-contrib/setup-bazel@0.8.1
+        with:
+          bazelisk-cache: true
+          disk-cache: '${{ github.workflow }}'
+          repository-cache: true
+          cache-version: 5
+          
+      - name: Configure TensorFlow
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}/tensorflow
+          git apply ../automatically_answer_configure_questions.patch
+          python configure.py
+          
+      - name: Install distutils
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          pip install setuptools && pip install numpy
+          
+      - name: Install dependencies
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          pip install setuptools && pip install numpy
+          
+      - name: Build TensorFlowLiteC on Device
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}/tensorflow
+          build_output=$(bazel build --config=ios --ios_multi_cpus="arm64" -c opt --cxxopt=--std=c++17 //tensorflow/lite/ios:TensorFlowLiteC_static_framework  2>&1 >/dev/null)
+          zip_file=$(echo "$build_output" | grep -o '[^ ]*\_framework.zip')
+          echo $zip_file
+          unzip -o $zip_file -d ${{ github.workspace }}/TensorFlowLiteC/Device
+          cp ${{ github.workspace }}/Info-TensorFlowLiteC.plist ${{ github.workspace }}/TensorFlowLiteC/Device/TensorFlowLiteC.framework/Info.plist
+          
+      - name: Build TensorFlowLiteCCoreML on Device
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}/tensorflow
+          git apply ../build_coreml_statically.patch
+          build_output=$(bazel build --config=ios --ios_multi_cpus="arm64" -c opt --cxxopt=--std=c++17 //tensorflow/lite/ios:TensorFlowLiteCCoreML_framework 2>&1 >/dev/null)
+          zip_file=$(echo "$build_output" | grep -o '[^ ]*\_framework.zip')
+          unzip -o $zip_file -d ${{ github.workspace }}/TensorFlowLiteCCoreML/Device
+          cp ${{ github.workspace }}/Info-TensorFlowLiteCCoreML.plist ${{ github.workspace }}/TensorFlowLiteCCoreML/Device/TensorFlowLiteCCoreML.framework/Info.plist
+          
+      - name: Create XCFramework
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cd ${{ github.workspace }}/TensorFlowLiteC
+          
+          xcodebuild -create-xcframework \
+            -framework ./Device/TensorFlowLiteC.framework \
+            -framework ./Simulator/TensorFlowLiteC.framework \
+            -output ${{ github.workspace }}/TensorFlowLiteC.xcframework
+          
+          cd ${{ github.workspace }}/TensorFlowLiteCCoreML
+          
+          xcodebuild -create-xcframework \
+            -framework ./Device/TensorFlowLiteCCoreML.framework \
+            -framework ./Simulator/TensorFlowLiteCCoreML.framework \
+            -output ${{ github.workspace }}/TensorFlowLiteCCoreML.xcframework
+
+          cd ${{ github.workspace }}
+          
+          cp TensorFlowLiteC.xcprivacy TensorFlowLiteC.xcframework/ios-arm64/TensorFlowLiteC.framework/PrivacyInfo.xcprivacy
+          cp TensorFlowLiteC.xcprivacy TensorFlowLiteC.xcframework/ios-arm64_x86_64-simulator/TensorFlowLiteC.framework/PrivacyInfo.xcprivacy
+          
+          cp TensorFlowLiteCCoreML.xcprivacy TensorFlowLiteCCoreML.xcframework/ios-arm64/TensorFlowLiteCCoreML.framework/PrivacyInfo.xcprivacy
+          cp TensorFlowLiteCCoreML.xcprivacy TensorFlowLiteCCoreML.xcframework/ios-arm64_x86_64-simulator/TensorFlowLiteCCoreML.framework/PrivacyInfo.xcprivacy
+
+          zip -r TensorFlowLiteC.xcframework.zip TensorFlowLiteC.xcframework
+          zip -r TensorFlowLiteCCoreML.xcframework.zip TensorFlowLiteCCoreML.xcframework
+
+          touch Package.swift
+
+          echo "TENSOR_FLOW_LITE_C_CHECKSUM=$(xcrun swift package compute-checksum TensorFlowLiteC.xcframework.zip)" >> $GITHUB_ENV
+          echo "TENSOR_FLOW_LITE_C_CORE_ML_CHECKSUM=$(xcrun swift package compute-checksum TensorFlowLiteCCoreML.xcframework.zip)" >> $GITHUB_ENV
+          
+      - name: Upload Release
+        if: steps.check-tag.outputs.exists == 'false'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file_glob: true
+          file: '*.zip'
+          tag: ${{ github.event.inputs.release_version }}
+          overwrite: true
+          make_latest: false
+          
+      - name: Get API URL
+        if: steps.check-tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          TENSOR_FLOW_LITE_C_API_URL=$(gh release view ${{ github.event.inputs.release_version }} --json assets -q '.assets[] | select (.name == "TensorFlowLiteC.xcframework.zip").apiUrl')
+          TENSOR_FLOW_LITE_C_CORE_ML_API_URL=$(gh release view ${{ github.event.inputs.release_version }} --json assets -q '.assets[] | select (.name == "TensorFlowLiteCCoreML.xcframework.zip").apiUrl')
+          echo "TENSOR_FLOW_LITE_C_API_URL=$TENSOR_FLOW_LITE_C_API_URL.zip" >> $GITHUB_ENV
+          echo "TENSOR_FLOW_LITE_C_CORE_ML_API_URL=$TENSOR_FLOW_LITE_C_CORE_ML_API_URL.zip" >> $GITHUB_ENV
+          
+      - name: Update Package.swift
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          cp -f Package.swift.in Package.swift
+          sed -i '' -e "s|{{TENSOR_FLOW_LITE_C_API_URL}}|${{ env.TENSOR_FLOW_LITE_C_API_URL }}|g" Package.swift
+          sed -i '' -e "s|{{TENSOR_FLOW_LITE_C_CHECKSUM}}|${{ env.TENSOR_FLOW_LITE_C_CHECKSUM }}|g" Package.swift
+          sed -i '' -e "s|{{TENSOR_FLOW_LITE_C_CORE_ML_API_URL}}|${{ env.TENSOR_FLOW_LITE_C_CORE_ML_API_URL }}|g" Package.swift
+          sed -i '' -e "s|{{TENSOR_FLOW_LITE_C_CORE_ML_CHECKSUM}}|${{ env.TENSOR_FLOW_LITE_C_CORE_ML_CHECKSUM }}|g" Package.swift
+          git add Package.swift
+          git commit -m "Update Package.swift"
+          git push -u origin release-${{ github.event.inputs.release_version }}
+          git tag -m "Update release commit" -f -a ${{ github.event.inputs.release_version }} $(git rev-parse origin/release-${{ github.event.inputs.release_version }})
+          git push -f origin refs/tags/${{ github.event.inputs.release_version }}

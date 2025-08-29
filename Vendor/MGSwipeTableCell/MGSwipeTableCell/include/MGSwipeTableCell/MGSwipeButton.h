@@ -1,1 +1,0 @@
-../../MGSwipeButton.h

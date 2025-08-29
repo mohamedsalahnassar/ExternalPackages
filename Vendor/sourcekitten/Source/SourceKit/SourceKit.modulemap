@@ -1,3 +1,0 @@
-module SourceKit {
-    header "include/sourcekitd.h"
-}

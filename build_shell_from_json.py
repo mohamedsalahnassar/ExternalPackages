@@ -787,12 +787,12 @@ def _cleanup_all_git(vendor_root: pathlib.Path):
 # ---------- Main ----------
 def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: str):
     """
-    Create a Shell/Package.swift that depends on vendored packages via path.
+    Create a root Package.swift that depends on vendored packages via path.
     Includes a single library target that depends on each listed product.
-    Only include packages that actually have a Package.swift in Vendor/<name>.
+    Only include packages that actually have a Package.swift in <vendor>/<name>.
     """
-    shell_name = cfg.get("shellPackageName", "ThirdPartyShell")
-    vendor_dir = vendor_root or cfg.get("vendorDir", "Vendor")
+    shell_name = cfg.get("shellPackageName", "ExternalPackages")
+    vendor_dir = vendor_root or cfg.get("vendorDir", "External")
 
     # Prepare dependency entries (path-based)
     dep_lines = []
@@ -814,7 +814,7 @@ def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: s
             to_attach.append(prod)
         # Only include the package dependency if at least one product is attached
         if to_attach and name not in seen_deps:
-            rel_path = os.path.relpath(os.path.join(str(vendor_dir), name), start="Shell")
+            rel_path = os.path.relpath(os.path.join(str(vendor_dir), name), start=".")
             dep_lines.append(f'        .package(path: "{rel_path}"),')
             seen_deps.add(name)
         # Use dependency name as declared in dependencies list (path basename)
@@ -853,12 +853,12 @@ let package = Package(
 )
 """
 
-    shell_dir = pathlib.Path("Shell")
-    src_dir = shell_dir / "Sources" / shell_name
+    pkg_root = pathlib.Path('.')
+    src_dir = pkg_root / "Sources" / shell_name
     ensure_dir(str(src_dir))
 
     # Write manifest
-    (shell_dir / "Package.swift").write_text(pkg_txt)
+    (pkg_root / "Package.swift").write_text(pkg_txt)
 
     # Re-export modules for convenience
     # Export only the products that were actually added to the target deps
@@ -877,11 +877,11 @@ let package = Package(
     exports_src = "// Auto-generated re-exports\n" + "\n".join([f"@_exported import {m}" for m in exported])
     (src_dir / "Exports.swift").write_text(exports_src)
 
-    good(f"Shell package generated → {shell_dir / 'Package.swift'}")
+    good(f"Root package generated → {pkg_root / 'Package.swift'}")
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("config_pos", nargs="?", help="Path to vendor_config.normalized.json")
+    ap.add_argument("config_pos", nargs="?", help="Path to external_packages.json")
     ap.add_argument("--config", default=None)
     ap.add_argument("--vendor-dir", default=None)
     ap.add_argument("--force", action="store_true")
@@ -893,15 +893,15 @@ def main():
     )
     ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
     args = ap.parse_args()
-    # Backward-compatible positional config
-    config_path = args.config or args.config_pos or "vendor_config.normalized.json"
+    # Config path
+    config_path = args.config or args.config_pos or "external_packages.json"
 
     cfg = json.load(open(config_path, "r"))
-    vendor_root = pathlib.Path(cfg.get("vendorDir","Vendor") if args.vendor_dir is None else args.vendor_dir)
+    vendor_root = pathlib.Path(cfg.get("vendorDir","External") if args.vendor_dir is None else args.vendor_dir)
     ensure_dir(vendor_root)
 
     rows_for_print = []
-    # Keep track of packages that are safe to include in Shell (have a Package.swift)
+    # Keep track of packages that are safe to include in the root package (have a Package.swift)
     shell_include: List[Dict] = []
     overall = {"errors": [], "cloned": []}
 
@@ -1050,7 +1050,7 @@ def main():
         remove_git_dir(str(pkg_dir))
 
     print_table(rows_for_print)
-    # Always regenerate Shell package by scanning all vendored packages with manifests
+    # Always regenerate root package by scanning all vendored packages with manifests
     # Also clean .git folders across vendor tree to ensure vendored copies are source-only
     _cleanup_all_git(vendor_root)
     all_shell_include = _scan_vendor_for_shell(vendor_root, cfg)

@@ -1,6 +1,0 @@
-framework module ADEUMInstrumentation {
-  umbrella header "ADEUMInstrumentation.h"
-
-  export *
-  module * { export * }
-}

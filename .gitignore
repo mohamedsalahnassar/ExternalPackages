@@ -1,6 +1,6 @@
 *.DS_Store
 /Sample/Pods
 /output/repos
-/Shell/.build
-/Shell/.swiftpm
+/.build
+/.swiftpm
 .DS_Store

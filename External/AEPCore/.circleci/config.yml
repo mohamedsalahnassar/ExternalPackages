@@ -1,0 +1,367 @@
+# For a detailed guide to building and testing on iOS, read the docs:
+# https://circleci.com/docs/2.0/testing-ios/
+
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@3.2.4
+  macos: circleci/macos@2
+  
+# Workflows orchestrate a set of jobs to be run;
+workflows:
+  version: 2
+  build-test:
+    jobs:
+      - validate-code
+      - test-ios-core:
+          requires:
+            - validate-code
+      - test-ios-services:
+          requires:
+            - validate-code
+      - test-ios-lifecycle:
+          requires:
+            - validate-code
+      - test-ios-identity:
+          requires:
+            - validate-code
+      - test-ios-signal:
+          requires:
+            - validate-code
+      - test-ios-integration:
+          requires:
+            - validate-code
+      - test-tvos-core:
+          requires:
+            - validate-code
+      - test-tvos-services:
+          requires:
+            - validate-code
+      - test-tvos-lifecycle:
+          requires:
+            - validate-code
+      - test-tvos-identity:
+          requires:
+            - validate-code
+      - test-tvos-signal:
+          requires:
+            - validate-code
+      - test-tvos-integration:
+          requires:
+            - validate-code
+      - test-spm-podspec-archive:
+          requires:
+            - validate-code
+
+commands: 
+  install_dependencies:
+    steps:
+      - run:
+          name: Pod install
+          command: pod install
+        
+  prestart_ios_simulator:
+    steps:
+      - macos/preboot-simulator:
+          platform: "iOS"
+          version: "16.1"
+          device: "iPhone 14"
+
+  prestart_tvos_simulator:
+    steps:
+      - macos/preboot-simulator:
+          platform: "tvOS"
+          version: "16.1"
+          device: "Apple TV"
+
+jobs:
+  validate-code:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - run:
+          name: Lint Source Code
+          command: make lint
+
+  test-ios-core:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+
+      - run:
+          name: Run AEPCore Tests
+          command: make aep-core-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepcore-ios-tests
+          upload_name: Coverage Report for AEPCore iOS Tests
+          xtra_args: -c -v --xc --xp  build/AEPCore-ios.xcresult
+
+  test-ios-services:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+
+      - run:
+          name: Run AEPServices Tests
+          command: make aep-services-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepservices-ios-tests
+          upload_name: Coverage Report for AEPServices iOS Tests
+          xtra_args: -c -v --xc --xp build/AEPServices-ios.xcresult
+  
+  test-ios-lifecycle:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+
+      - run:
+          name: Run AEPLifecycle Tests
+          command: make aep-lifecycle-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aeplifecycle-ios-tests
+          upload_name: Coverage Report for AEPLifecycle iOS Tests
+          xtra_args: -c -v --xc --xp build/AEPLifecycle-ios.xcresult
+
+  test-ios-identity:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+
+      - run:
+          name: Run AEPIdentity Tests
+          command: make aep-identity-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepidentity-ios-tests
+          upload_name: Coverage Report for AEPIdentity iOS Tests
+          xtra_args: -c -v --xc --xp build/AEPIdentity-ios.xcresult
+
+  test-ios-signal:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+
+      - run:
+          name: Run AEPSignal Tests
+          command: make aep-signal-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepsignal-ios-tests
+          upload_name: Coverage Report for AEPSignal iOS Tests
+          xtra_args: -c -v --xc --xp build/AEPSignal-ios.xcresult
+
+  test-ios-integration:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_ios_simulator
+      
+      - run:
+          name: Run iOS integration Tests
+          command: make integration-test
+
+  test-tvos-core:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run AEPCore tvOS Tests
+          command: make aep-core-tvos-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepcore-tvos-tests
+          upload_name: Coverage Report for AEPCore tvOS Tests
+          xtra_args: -c -v --xc --xp build/AEPCore-tvos.xcresult
+
+  test-tvos-services:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run AEPServices tvOS Tests
+          command: make aep-services-tvos-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepservices-tvos-tests
+          upload_name: Coverage Report for AEPServices tvOS Tests
+          xtra_args: -c -v --xc --xp build/AEPServices-tvos.xcresult
+
+  test-tvos-lifecycle:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run AEPLifecycle tvOS Tests
+          command: make aep-lifecycle-tvos-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aeplifecycle-tvos-tests
+          upload_name: Coverage Report for AEPLifecycle tvOS Tests
+          xtra_args: -c -v --xc --xp build/AEPLifecycle-tvos.xcresult
+
+  test-tvos-identity:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run AEPIdentity tvOS Tests
+          command: make aep-identity-tvos-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepidentity-tvos-tests
+          upload_name: Coverage Report for AEPIdentity tvOS Tests
+          xtra_args: -c -v --xc --xp build/AEPIdentity-tvos.xcresult
+
+  test-tvos-signal:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run AEPSignal tvOS Tests
+          command: make aep-signal-tvos-unit-test
+
+      # Code coverage upload using Codecov
+      # See options explanation here: https://docs.codecov.com/docs/codecov-uploader
+      - codecov/upload:
+          flags: aepsignal-tvos-tests
+          upload_name: Coverage Report for AEPSignal tvOS Tests
+          xtra_args: -c -v --xc --xp build/AEPSignal-tvos.xcresult
+
+  test-tvos-integration:
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - prestart_tvos_simulator
+      
+      - run:
+          name: Run tvOS integration Tests
+          command: make integration-tvos-test
+
+  test-spm-podspec-archive:  
+    macos:
+      xcode: 14.1.0 # Specify the Xcode version to use
+    
+    steps:
+      - checkout
+      # verify XCFramework archive builds
+      - run:
+          name: Build XCFramework
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "main" ]; then
+              make archive
+            fi
+      # verify podspec is valid
+      - run:
+          name: Test Podspec
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "main" ]; then
+              make test-podspec
+            fi
+      # verify SPM works
+      - run:
+          name: Test SPM 
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "main" ]; then
+              make test-SPM-integration
+            fi

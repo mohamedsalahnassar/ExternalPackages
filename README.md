@@ -1,20 +1,20 @@
 # PodsToSPMConverter – Advanced Guide
 
-This repository vendors third‑party dependencies as Swift Packages into the `Vendor/` folder and generates a lightweight shell package (`Shell/`) that aggregates them for consumption by your app. It is designed to work entirely offline after the first run by converting remote binary targets to path‑based dependencies and by mirroring transitive package sources locally.
+This repository vendors third‑party dependencies as Swift Packages into the `External/` folder and generates a single Swift package at the repository root (named `ExternalPackages`). It is designed to work entirely offline after the first run by converting remote binary targets to path‑based dependencies and by mirroring transitive package sources locally.
 
 ## Overview
 - Converts remote `.binaryTarget(url: ...)` targets to local `path:` XCFrameworks.
 - Mirrors transitive SwiftPM dependencies locally and rewrites manifests to path‑based `package(path:)` entries.
-- Generates a single shell package (`Shell/`) that re‑exports modules you use, so your app can simply `import ThirdPartyShell`.
+- Generates a single root package (`ExternalPackages`) that re‑exports modules you use, so your app can simply `import ExternalPackages`.
 - Supports authenticated and anonymous binary hosts (GitHub Releases, Artifactory/JFrog, S3 redirects, etc.).
 
 ## Quick Start
-1. Adjust the configuration in `vendor_config.normalized.json` (names, versions, products).
+1. Adjust the configuration in `external_packages.json` (names, versions, products).
 2. Run vendoring:
    ```bash
-   python3 build_shell_from_json.py --force
+   python3 manage_external_packages.py --force
    ```
-3. In Xcode, add `Shell/` as a local Swift Package and build.
+3. In Xcode, open the root `Package.swift` (package name: `ExternalPackages`) and build.
 
 ## Useful Flags
 - `--force` – reprocesses packages even if they were previously completed.
@@ -41,7 +41,7 @@ Some hosts require specific headers or flows. The script auto‑detects many com
 - Product → Clean Build Folder.
 - CLI:
   ```bash
-  (cd Shell && swift package reset && swift package resolve)
+  swift package reset && swift package resolve
   ```
 - Delete `~/Library/Developer/Xcode/DerivedData/Shell*/SourcePackages` if a stale artifact pops up.
 
@@ -129,4 +129,3 @@ Last updated: `2025-08-29T08:56:45Z`
 
 ## License
 See individual package licenses in `Vendor/<Package>/` and this repository’s license.
-

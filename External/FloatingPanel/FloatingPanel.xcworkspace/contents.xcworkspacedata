@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:README.md">
+   </FileRef>
+   <FileRef
+      location = "group:FloatingPanel.xcodeproj">
+   </FileRef>
+   <Group
+      location = "group:Examples"
+      name = "Examples">
+      <FileRef
+         location = "group:Maps-SwiftUI/Maps-SwiftUI.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:Maps/Maps.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:Stocks/Stocks.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:Samples/Samples.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:SamplesObjC/SamplesObjC.xcodeproj">
+      </FileRef>
+   </Group>
+</Workspace>

@@ -1,3 +1,0 @@
-module Clang_C {
-    header "include/Clang_C.h"
-}

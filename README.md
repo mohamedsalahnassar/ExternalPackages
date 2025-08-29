@@ -12,7 +12,7 @@ This repository vendors third‑party dependencies as Swift Packages into the `E
 1. Adjust the configuration in `external_packages.json` (names, versions, products).
 2. Run vendoring:
    ```bash
-   python3 manage_external_packages.py --force
+   python3 external_packages_builder.py --force
    ```
 3. In Xcode, open the root `Package.swift` (package name: `ExternalPackages`) and build.
 
@@ -43,12 +43,12 @@ Some hosts require specific headers or flows. The script auto‑detects many com
   ```bash
   swift package reset && swift package resolve
   ```
-- Delete `~/Library/Developer/Xcode/DerivedData/Shell*/SourcePackages` if a stale artifact pops up.
+- Delete `~/Library/Developer/Xcode/DerivedData/*/SourcePackages` if a stale artifact pops up.
 
 ## Troubleshooting Tips
 - “No such module ‘X’” after converting binaries: reset caches so Xcode picks up the new path‑based manifest.
 - Slow clones: the script uses shallow fetches, tag‑first lookups, LFS smudge disabled, and cleans `.git` metadata after finishing.
-- Path vs product names: SwiftPM lets you depend on “products”, but you import “modules” (targets). The shell re‑exports the actual modules so `import ThirdPartyShell` works.
+- Path vs product names: SwiftPM lets you depend on “products”, but you import “modules” (targets). The root package re‑exports the actual modules so `import ExternalPackages` works.
 
 ---
 
@@ -124,8 +124,8 @@ Last updated: `2025-08-29T08:56:45Z`
 ---
 
 ## Configuration Notes
-- To keep a package vendor‑only (vendored locally but not added to the shell target), set its `products` to an empty list in `vendor_config.normalized.json`.
+- To keep a package vendor‑only (vendored locally but not added to the aggregate target), set its `products` to an empty list in `external_packages.json`.
 - For packages that need post‑clone tweaks (e.g., move files, bump platform), add a `postCloneCommands` array with shell snippets. Commands run inside the package directory.
 
 ## License
-See individual package licenses in `Vendor/<Package>/` and this repository’s license.
+See individual package licenses in `External/<Package>/` and this repository’s license.

@@ -79,8 +79,8 @@ def _mark_pkg_done(vendor_dir, name, version, pkg_dir):
 # ---------- Utils ----------
 def ensure_dir(p):
     os.makedirs(p, exist_ok=True)
-def run(cmd, cwd=None):
-    return subprocess.check_call(cmd, cwd=cwd)
+def run(cmd, cwd=None, env=None):
+    return subprocess.check_call(cmd, cwd=cwd, env=env)
 
 # ---------- Git checkout ----------
 def checkout_repo(dest_dir, git_url, version):
@@ -98,16 +98,37 @@ def checkout_repo(dest_dir, git_url, version):
         shutil.rmtree(dest_dir)
 
     def has_submodules(path): return os.path.exists(os.path.join(path, ".gitmodules"))
+    def is_git_repo(path): return os.path.isdir(os.path.join(path, ".git"))
+    def ensure_repo_initialized(path, remote):
+        ensure_dir(path)
+        if not is_git_repo(path):
+            run(["git", "init"], cwd=path)
+            run(["git", "remote", "add", "origin", remote], cwd=path)
+        else:
+            try:
+                run(["git", "remote", "set-url", "origin", remote], cwd=path)
+            except subprocess.CalledProcessError:
+                pass
+        return True
 
-    if not os.path.exists(dest_dir):
-        step(f"Cloning (no checkout) {git_url} → {dest_dir}")
+    # If a specific version is requested, prefer an init + shallow fetch of that ref
+    # to avoid large clones (especially on servers without partial-clone support).
+    if version:
         try:
-            run(["git", "clone", "--no-checkout", "--filter=blob:none", git_url, dest_dir])
+            ensure_repo_initialized(dest_dir, git_url)
         except subprocess.CalledProcessError as e:
-            bad(f"git clone failed: {e}")
-            return False, "git clone failed"
+            bad(f"git init/remote add failed: {e}")
+            return False, "git init failed"
     else:
-        dim(f"{dest_dir} already exists")
+        if not os.path.exists(dest_dir):
+            step(f"Cloning (no checkout) {git_url} → {dest_dir}")
+            try:
+                run(["git", "clone", "--no-checkout", "--filter=blob:none", git_url, dest_dir])
+            except subprocess.CalledProcessError as e:
+                bad(f"git clone failed: {e}")
+                return False, "git clone failed"
+        else:
+            dim(f"{dest_dir} already exists")
 
     if not version:
         dim("No version specified; leaving repository at default branch/HEAD")
@@ -120,50 +141,51 @@ def checkout_repo(dest_dir, git_url, version):
         return True, "HEAD"
 
     base = str(version)[1:] if str(version).startswith("v") else str(version)
-    candidates = [base, f"v{base}", f"origin/{base}"]
-    tag_candidates = [("tag", base), ("tag", f"v{base}")]
-
-    for ref in candidates:
-        try:
-            run(["git", "fetch", "--depth", "1", "origin", ref], cwd=dest_dir)
-            run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir)
-            good(f"Checked out {ref}")
-            if has_submodules(dest_dir):
-                try: run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"], cwd=dest_dir)
-                except subprocess.CalledProcessError:
-                    run(["git", "submodule", "update", "--init", "--recursive"], cwd=dest_dir)
-            return True, ref
-        except subprocess.CalledProcessError:
-            continue
-
-    for kind, ref in tag_candidates:
-        try:
-            run(["git", "fetch", "--depth", "1", "origin", kind, ref], cwd=dest_dir)
-            run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir)
-            good(f"Checked out {kind} {ref}")
-            if has_submodules(dest_dir):
-                try: run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"], cwd=dest_dir)
-                except subprocess.CalledProcessError:
-                    run(["git", "submodule", "update", "--init", "--recursive"], cwd=dest_dir)
-            return True, ref
-        except subprocess.CalledProcessError:
-            continue
-
-    try:
-        run(["git", "fetch", "--tags", "origin"], cwd=dest_dir)
-        for ref in (f"v{base}", base):
+    # Try specific tags first, then branches
+    shallow_env = dict(os.environ)
+    # Avoid auto-downloading LFS blobs during checkout
+    shallow_env.setdefault("GIT_LFS_SKIP_SMUDGE", "1")
+    def _do_submodules():
+        if has_submodules(dest_dir):
             try:
-                run(["git", "checkout", f"tags/{ref}"], cwd=dest_dir)
-                good(f"Checked out tags/{ref}")
-                if has_submodules(dest_dir):
-                    try: run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"], cwd=dest_dir)
-                    except subprocess.CalledProcessError:
-                        run(["git", "submodule", "update", "--init", "--recursive"], cwd=dest_dir)
+                run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"], cwd=dest_dir, env=shallow_env)
+            except subprocess.CalledProcessError:
+                run(["git", "submodule", "update", "--init", "--recursive"], cwd=dest_dir, env=shallow_env)
+
+    def try_sequence():
+        # Ensure path exists before each attempt
+        ensure_repo_initialized(dest_dir, git_url)
+        tag_names = [f"v{base}", base]
+        for t in tag_names:
+            try:
+                run(["git", "fetch", "--depth", "1", "origin", "tag", t], cwd=dest_dir, env=shallow_env)
+                run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir, env=shallow_env)
+                good(f"Checked out tag {t}")
+                _do_submodules()
+                return True, f"tags/{t}"
+            except subprocess.CalledProcessError:
+                continue
+        candidates = [base, f"v{base}", f"origin/{base}"]
+        for ref in candidates:
+            try:
+                run(["git", "fetch", "--depth", "1", "origin", ref], cwd=dest_dir, env=shallow_env)
+                run(["git", "checkout", "FETCH_HEAD"], cwd=dest_dir, env=shallow_env)
+                good(f"Checked out {ref}")
+                _do_submodules()
                 return True, ref
             except subprocess.CalledProcessError:
                 continue
-    except subprocess.CalledProcessError as e:
-        bad(f"Tag fetch failed: {e}")
+        return False, None
+
+    ok, ref = try_sequence()
+    if ok:
+        return True, ref
+    # Retry once from a clean slate for transient pack/index errors
+    shutil.rmtree(dest_dir, ignore_errors=True)
+    ensure_repo_initialized(dest_dir, git_url)
+    ok, ref = try_sequence()
+    if ok:
+        return True, ref
 
     bad(f"Could not checkout {version}")
     return False, f"checkout failed ({version})"
@@ -202,18 +224,34 @@ def download_file(url, dest, token=None, extra_headers=None):
     step(f"Downloading binary: {url}")
     try:
         if os.path.isfile(dest) and os.path.getsize(dest) > 0:
-            info(f"[skip] download_file: {dest} already present")
-            return True, None
+            # Only skip if it's actually a valid zip
+            if zipfile.is_zipfile(dest):
+                info(f"[skip] download_file: {dest} already present")
+                return True, None
+            else:
+                warn(f"Cached file invalid zip; re-downloading → {dest}")
+                try:
+                    os.remove(dest)
+                except Exception:
+                    pass
     except Exception:
         pass
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-        "Accept": "application/zip, */*;q=0.8",
+        # Default to octet-stream which works for GitHub assets API
+        "Accept": "application/octet-stream, application/zip;q=0.9, */*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Connection": "keep-alive",
     }
+    # Prefer explicit token argument, else fall back to env var
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
-        headers["Authorization"] = f"Bearer {token}"
+        # GitHub accepts both Bearer and token; keep it simple
+        if not str(token).startswith(("Bearer ", "token ")):
+            headers["Authorization"] = f"token {token}"
+        else:
+            headers["Authorization"] = str(token)
     if extra_headers:
         headers.update(extra_headers)
 
@@ -221,8 +259,15 @@ def download_file(url, dest, token=None, extra_headers=None):
     try:
         u = urlparse(url)
         host = (u.netloc or "").lower()
+        path = u.path or ""
     except Exception:
         host = ""
+        path = ""
+
+    # Special handling for GitHub release asset API endpoint which requires
+    # Accept: application/octet-stream in order to return the binary bytes
+    if host == "api.github.com" and "/releases/assets/" in path:
+        headers["Accept"] = "application/octet-stream"
 
     if "jfrog" in host or "artifactory" in host:
         # Inject API key header if provided via env
@@ -240,11 +285,45 @@ def download_file(url, dest, token=None, extra_headers=None):
                 b = base64.b64encode(f"{user}:{pwd}".encode()).decode()
                 headers["Authorization"] = f"Basic {b}"
 
+    def _extract_urls_from_json_bytes(b: bytes):
+        try:
+            txt = b.decode("utf-8", errors="ignore")
+            obj = json.loads(txt)
+        except Exception:
+            return []
+        found = []
+        def walk(o):
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    walk(v)
+                    if isinstance(v, str) and v.startswith("http"):
+                        found.append(v)
+            elif isinstance(o, list):
+                for it in o:
+                    walk(it)
+            elif isinstance(o, str):
+                if o.startswith("http"):
+                    found.append(o)
+        walk(obj)
+        # Prefer direct artifacts
+        def score(u: str):
+            u_l = u.lower()
+            return (
+                0 if u_l.endswith(".zip") else 1,
+                0 if ".xcframework" in u_l or ".artifactbundle" in u_l else 1,
+                len(u_l)
+            )
+        found = list(dict.fromkeys(found))
+        found.sort(key=score)
+        return found
+
     def attempt(h, tag):
         try:
             req = urllib.request.Request(url, headers=h)
-            with urllib.request.urlopen(req, timeout=240) as r, open(dest, "wb") as f:
-                shutil.copyfileobj(r, f)
+            with urllib.request.urlopen(req, timeout=240) as r:
+                body = r.read()
+                with open(dest, "wb") as f:
+                    f.write(body)
             # Validate zip signature
             try:
                 if not zipfile.is_zipfile(dest):
@@ -253,11 +332,19 @@ def download_file(url, dest, token=None, extra_headers=None):
                         ct = r.headers.get("Content-Type", "")
                     except Exception:
                         pass
+                    # If JSON with nested URL, try to extract
+                    if "json" in (ct or "").lower() or (body[:1] in (b"{", b"[")):
+                        nested = _extract_urls_from_json_bytes(body)
+                        for u2 in nested:
+                            ok_nested, err_nested = download_file(u2, dest, token=token, extra_headers=h)
+                            if ok_nested and zipfile.is_zipfile(dest):
+                                good(f"Resolved nested download URL → {u2}")
+                                return True, None
+                        # fallthrough to treat as non-zip
                     # Read a few bytes to hint what we got
                     head = b""
                     try:
-                        with open(dest, "rb") as _fh:
-                            head = _fh.read(64)
+                        head = body[:64]
                     except Exception:
                         pass
                     os.remove(dest)
@@ -287,6 +374,14 @@ def download_file(url, dest, token=None, extra_headers=None):
             return True, None
         # Fallthrough to potential '?download' retry
         err = err2 or err
+    # If we hit GitHub asset API without octet-stream, retry forcing it
+    if (host == "api.github.com" and "/releases/assets/" in path and "not a zip file" in (err or "")):
+        h2 = dict(headers)
+        h2["Accept"] = "application/octet-stream"
+        ok3, err3 = attempt(h2, "retry+octet-stream")
+        if ok3:
+            return True, None
+        err = err3 or err
     # Some Artifactory URLs need '?download' to return raw bytes
     if ((err or "").startswith("initial: not a zip file") or "not a zip file" in (err or "")) and "download" not in (url or ""):
         sep = '&' if ('?' in url) else '?'
@@ -381,6 +476,14 @@ def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
             includes.append({"name": name, "products": products})
     return includes
 
+def _cleanup_all_git(vendor_root: pathlib.Path):
+    """Remove all .git directories under vendor_root."""
+    if not vendor_root.exists():
+        return
+    for entry in vendor_root.iterdir():
+        if entry.is_dir():
+            remove_git_dir(str(entry))
+
 # ---------- Main ----------
 def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: str):
     """
@@ -462,6 +565,12 @@ def main():
     ap.add_argument("--config", default=None)
     ap.add_argument("--vendor-dir", default=None)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument(
+        "--package",
+        dest="only_packages",
+        default=None,
+        help="Comma-separated package name(s) to process only these packages"
+    )
     ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
     args = ap.parse_args()
     # Backward-compatible positional config
@@ -476,8 +585,15 @@ def main():
     shell_include: List[Dict] = []
     overall = {"errors": [], "cloned": []}
 
+    # Optional filtering by package name(s)
+    only_set = None
+    if args.only_packages:
+        only_set = {s.strip() for s in str(args.only_packages).split(",") if s.strip()}
+
     for p in cfg.get("packages", []):
         name = p.get("name")
+        if only_set is not None and name not in only_set:
+            continue
         git = (p.get("git") or "").strip()
         target_ver = str(p.get("targetVersion") or p.get("currentVersion") or "")
         binary_headers = p.get("binaryHeaders") or p.get("headers") or {}
@@ -603,6 +719,8 @@ def main():
 
     print_table(rows_for_print)
     # Always regenerate Shell package by scanning all vendored packages with manifests
+    # Also clean .git folders across vendor tree to ensure vendored copies are source-only
+    _cleanup_all_git(vendor_root)
     all_shell_include = _scan_vendor_for_shell(vendor_root, cfg)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
 

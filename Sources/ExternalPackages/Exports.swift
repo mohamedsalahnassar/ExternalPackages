@@ -12,7 +12,6 @@
 @_exported import AEPSignal
 @_exported import AEPTarget
 @_exported import Alamofire
-@_exported import AlamofireNetworkActivityLogger
 @_exported import AppDynamicsAgent
 @_exported import BigInt
 @_exported import CryptoSwift

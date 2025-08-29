@@ -844,13 +844,17 @@ def _declared_products(manifest_path: pathlib.Path) -> List[str]:
         return []
     return [m.group(1) for m in _PRODUCT_LIB_RE.finditer(txt)]
 
-def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
-    """Scan Vendor dir for all packages that have a Package.swift and build include list."""
+def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict, only: Optional[Set[str]] = None) -> List[Dict]:
+    """Scan vendor dir for packages with a Package.swift and build include list.
+    If `only` is provided, include only directories whose name is in that set.
+    """
     includes: List[Dict] = []
     if not vendor_root.exists():
         return includes
     for entry in sorted(vendor_root.iterdir(), key=lambda p: p.name.lower()):
         if not entry.is_dir():
+            continue
+        if only is not None and entry.name not in only:
             continue
         pkg_manifest = entry / "Package.swift"
         if pkg_manifest.exists():
@@ -871,6 +875,26 @@ def _scan_vendor_for_shell(vendor_root: pathlib.Path, cfg: Dict) -> List[Dict]:
                 entry_info["exports"] = exports
             includes.append(entry_info)
     return includes
+
+def _prune_unlisted_packages(vendor_root: pathlib.Path, keep: Set[str]):
+    """Remove vendor subdirectories that are not listed in `keep`.
+    To be safe, only remove directories that contain a Package.swift or a .done.json marker.
+    """
+    if not vendor_root.exists():
+        return
+    for entry in sorted(vendor_root.iterdir(), key=lambda p: p.name.lower()):
+        if not entry.is_dir():
+            continue
+        if entry.name in keep:
+            continue
+        pkg_manifest = entry / "Package.swift"
+        done_marker = entry / ".done.json"
+        if pkg_manifest.exists() or done_marker.exists():
+            try:
+                shutil.rmtree(entry)
+                good(f"Pruned removed package → {entry.name}")
+            except Exception as e:
+                warn(f"Could not prune {entry.name}: {e}")
 
 def _cleanup_all_git(vendor_root: pathlib.Path):
     """Remove all .git directories under vendor_root."""
@@ -1119,6 +1143,7 @@ def main():
     )
     ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
     ap.add_argument("--cleanup-only", action="store_true", help="Run cleanup across vendored tree without cloning or downloading")
+    ap.add_argument("--prune", action="store_true", help="Delete vendor folders not present in the config")
     args = ap.parse_args()
     # Config path
     config_path = args.config or args.config_pos or "external_packages.json"
@@ -1316,7 +1341,14 @@ def main():
     # Always regenerate root package by scanning all vendored packages with manifests
     # Also clean .git folders across vendor tree to ensure vendored copies are source-only
     _cleanup_all_git(vendor_root)
-    all_shell_include = _scan_vendor_for_shell(vendor_root, cfg)
+    # Determine desired package names from config
+    desired_names: Set[str] = { (e.get("name") or "").strip() for e in (cfg.get("packages") or []) if (e.get("name") or "").strip() }
+    # Optionally prune directories not present in config
+    if args.prune:
+        step("Pruning vendor directories not listed in config …")
+        _prune_unlisted_packages(vendor_root, desired_names)
+    # Generate root package using only packages listed in config
+    all_shell_include = _scan_vendor_for_shell(vendor_root, cfg, only=desired_names)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
     # Update README live matrix
     try:

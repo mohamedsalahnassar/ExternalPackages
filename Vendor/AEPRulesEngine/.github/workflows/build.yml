@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+      - dev-**
+    paths:
+      - 'Sources/**'
+      - 'Tests/**'
+
+  pull_request:
+    branches:
+      - dev
+      - main
+      - dev-**
+    paths:
+      - 'Sources/**'
+      - 'Tests/**'
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install swiftformat
+      run: brew install swiftformat
+
+    - name: Install SwiftLint
+      run: which swiftLint || brew install swiftlint
+
+    - name: Linting
+      run: make lint; make check-format
+
+    - name: Build
+      run: swift build -v
+
+    - name: Run tests
+      run: swift test -v --enable-code-coverage
+
+    - name: Download Codecov
+      run: |
+        curl -s https://codecov.io/bash > codecov;
+        VERSION=$(grep 'VERSION=\"[0-9\.]*\"' codecov | cut -d'"' -f2);
+        for i in 1 256 512
+        do
+          shasum -a $i -c --ignore-missing <(curl -s "https://raw.githubusercontent.com/codecov/codecov-bash/${VERSION}/SHA${i}SUM") ||
+          shasum -a $i -c <(curl -s "https://raw.githubusercontent.com/codecov/codecov-bash/${VERSION}/SHA${i}SUM" | grep -w "codecov")
+        done
+    
+    - name: Upload Code Coverage
+      run: make generate-lcov; bash ./codecov

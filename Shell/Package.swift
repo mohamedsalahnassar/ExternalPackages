@@ -61,7 +61,7 @@ let package = Package(
         .package(path: "../Vendor/swift-argument-parser"),
         .package(path: "../Vendor/swift-protobuf"),
         .package(path: "../Vendor/swift-syntax"),
-//        .package(path: "../Vendor/SwiftLint"),
+        .package(path: "../Vendor/SwiftLint"),
         .package(path: "../Vendor/swiftytexttable"),
         .package(path: "../Vendor/swxmlhash"),
         .package(path: "../Vendor/TensorFlowLiteC"),
@@ -126,7 +126,7 @@ let package = Package(
                 .product(name: "RxSwiftExt", package: "RxSwiftExt"),
                 .product(name: "SkeletonView", package: "SkeletonView"),
                 .product(name: "SVProgressHUD", package: "SVProgressHUD"),
-//                .product(name: "SwiftLintFramework", package: "SwiftLint"),
+                .product(name: "SwiftLintFramework", package: "SwiftLint"),
                 .product(name: "TensorFlowLiteC", package: "TensorFlowLiteC"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]

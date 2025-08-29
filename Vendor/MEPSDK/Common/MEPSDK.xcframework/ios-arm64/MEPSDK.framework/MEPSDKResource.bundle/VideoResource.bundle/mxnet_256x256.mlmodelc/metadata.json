@@ -1,0 +1,69 @@
+[
+  {
+    "shortDescription" : "",
+    "metadataOutputVersion" : "3.0",
+    "outputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32)",
+        "shortDescription" : "",
+        "shape" : "[]",
+        "name" : "Identity",
+        "type" : "MultiArray"
+      }
+    ],
+    "version" : "7.9",
+    "modelParameters" : [
+
+    ],
+    "author" : "Elton Liu",
+    "specificationVersion" : 4,
+    "license" : "Moxtra, Inc.",
+    "isUpdatable" : "0",
+    "availability" : {
+      "macOS" : "10.15",
+      "tvOS" : "13.0",
+      "watchOS" : "6.0",
+      "iOS" : "13.0",
+      "macCatalyst" : "13.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_neuralNetwork"
+    },
+    "inputSchema" : [
+      {
+        "formattedType" : "Image (Color 256 × 256)",
+        "hasSizeFlexibility" : "1",
+        "shortDescription" : "",
+        "sizeRange" : "[[256, 256], [256, 256]]",
+        "width" : "256",
+        "type" : "Image",
+        "isColor" : "1",
+        "height" : "256",
+        "sizeFlexibility" : "256 × 256",
+        "colorspace" : "BGR",
+        "name" : "input",
+        "isOptional" : "0"
+      }
+    ],
+    "userDefinedMetadata" : {
+      "com.github.apple.coremltools.version" : "4.1",
+      "com.github.apple.coremltools.source" : "tensorflow==2.5.0"
+    },
+    "generatedClassName" : "mxnet_256x256",
+    "neuralNetworkLayerTypeHistogram" : {
+      "PaddingConstant" : 21,
+      "ActivationReLU" : 42,
+      "Add" : 9,
+      "SliceStatic" : 1,
+      "Deconvolution" : 1,
+      "Transpose" : 1,
+      "Convolution" : 50,
+      "ActivationSigmoid" : 1,
+      "AddBroadcastable" : 3
+    },
+    "method" : "predict"
+  }
+]

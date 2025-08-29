@@ -1,0 +1,27 @@
+name: Jazzy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ['*']
+
+jobs:
+  Jazzy:
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - run: swift build
+      - name: Generate documentation json
+        run: swift run sourcekitten doc --spm --module-name SourceKittenFramework > SourceKittenFramework.json
+      - name: Run jazzy
+        run: bundle exec jazzy --clean --sourcekitten-sourcefile SourceKittenFramework.json
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: API Docs
+          path: docs

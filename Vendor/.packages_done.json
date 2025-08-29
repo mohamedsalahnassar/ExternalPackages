@@ -1,0 +1,226 @@
+{
+  "abseil-cpp-swiftpm": {
+    "version": "0.20200225.4",
+    "timestamp": "2025-08-29T08:05:34.789400Z"
+  },
+  "AEPAnalytics": {
+    "version": "4.0.0",
+    "timestamp": "2025-08-29T08:05:36.360874Z"
+  },
+  "AEPAssurance": {
+    "version": "4.1.1",
+    "timestamp": "2025-08-29T08:05:39.095817Z"
+  },
+  "AEPCore": {
+    "version": "4.2.4",
+    "timestamp": "2025-08-29T08:05:40.782030Z"
+  },
+  "AEPEdge": {
+    "version": "4.3.1",
+    "timestamp": "2025-08-29T08:05:44.167732Z"
+  },
+  "AEPEdgeConsent": {
+    "version": "4.0.0",
+    "timestamp": "2025-08-29T08:05:45.661781Z"
+  },
+  "AEPEdgeIdentity": {
+    "version": "4.0.0",
+    "timestamp": "2025-08-29T08:05:47.099127Z"
+  },
+  "AEPRulesEngine": {
+    "version": "4.0.0",
+    "timestamp": "2025-08-29T08:05:48.656738Z"
+  },
+  "AEPTarget": {
+    "version": "4.0.3",
+    "timestamp": "2025-08-29T08:05:50.095533Z"
+  },
+  "Alamofire": {
+    "version": "5.0.0",
+    "timestamp": "2025-08-29T08:05:51.802162Z"
+  },
+  "AlamofireNetworkActivityLogger": {
+    "version": "3.4.0",
+    "timestamp": "2025-08-29T08:05:56.869570Z"
+  },
+  "BigInt": {
+    "version": "5.2.0",
+    "timestamp": "2025-08-29T08:06:05.482272Z"
+  },
+  "boringssl-swiftpm": {
+    "version": "0.7.2",
+    "timestamp": "2025-08-29T08:06:10.682474Z"
+  },
+  "collectionconcurrencykit": {
+    "version": "0.2.0",
+    "timestamp": "2025-08-29T08:06:12.141552Z"
+  },
+  "CryptoSwift": {
+    "version": "1.4.1",
+    "timestamp": "2025-08-29T08:06:13.637662Z"
+  },
+  "DeviceKit": {
+    "version": "5.5.0",
+    "timestamp": "2025-08-29T08:06:15.031545Z"
+  },
+  "DGCharts": {
+    "version": "5.0.0",
+    "timestamp": "2025-08-29T08:06:17.621433Z"
+  },
+  "Firebase": {
+    "version": "8.9.1",
+    "timestamp": "2025-08-29T08:06:21.399290Z"
+  },
+  "FloatingPanel": {
+    "version": "2.8.1",
+    "timestamp": "2025-08-29T08:06:23.238914Z"
+  },
+  "googleappmeasurement": {
+    "version": "8.9.1",
+    "timestamp": "2025-08-29T08:06:26.167757Z"
+  },
+  "GoogleDataTransport": {
+    "version": "9.1.2",
+    "timestamp": "2025-08-29T08:06:27.681083Z"
+  },
+  "GoogleMaps": {
+    "version": "8.3.1",
+    "timestamp": "2025-08-29T08:06:31.858446Z"
+  },
+  "GooglePlaces": {
+    "version": "8.3.0",
+    "timestamp": "2025-08-29T08:06:33.967160Z"
+  },
+  "googleutilities": {
+    "version": "7.13.3",
+    "timestamp": "2025-08-29T08:06:35.433500Z"
+  },
+  "grpc-swiftpm": {
+    "version": "1.28.4",
+    "timestamp": "2025-08-29T08:06:39.510704Z"
+  },
+  "gtm-session-fetcher": {
+    "version": "1.7.2",
+    "timestamp": "2025-08-29T08:06:40.611380Z"
+  },
+  "Insider": {
+    "version": "1.4.1",
+    "timestamp": "2025-08-29T08:06:42.441692Z"
+  },
+  "IOSSecuritySuite": {
+    "version": "2.0.2",
+    "timestamp": "2025-08-29T08:06:43.888783Z"
+  },
+  "iProov": {
+    "version": "11.1.1",
+    "timestamp": "2025-08-29T08:06:45.898677Z"
+  },
+  "IQKeyboardManagerSwift": {
+    "version": "6.3.0",
+    "timestamp": "2025-08-29T08:06:47.028832Z"
+  },
+  "ISPageControl": {
+    "version": "0.1.0",
+    "timestamp": "2025-08-29T08:06:49.864546Z"
+  },
+  "KeychainAccess": {
+    "version": "3.2.1",
+    "timestamp": "2025-08-29T08:06:50.847664Z"
+  },
+  "Kingfisher": {
+    "version": "7.9.1",
+    "timestamp": "2025-08-29T08:06:52.387577Z"
+  },
+  "leveldb": {
+    "version": "1.22.5",
+    "timestamp": "2025-08-29T08:06:53.808834Z"
+  },
+  "Lottie": {
+    "version": "4.5.0",
+    "timestamp": "2025-08-29T08:07:04.326380Z"
+  },
+  "Mantis": {
+    "version": "2.8.0",
+    "timestamp": "2025-08-29T08:07:07.262845Z"
+  },
+  "MEPSDK": {
+    "version": "9.8.6",
+    "timestamp": "2025-08-29T08:07:20.011713Z"
+  },
+  "MGSwipeTableCell": {
+    "version": "1.6.14",
+    "timestamp": "2025-08-29T08:07:21.607446Z"
+  },
+  "nanopb": {
+    "version": "0.3.9.8",
+    "timestamp": "2025-08-29T08:07:23.177041Z"
+  },
+  "Promises": {
+    "version": "2.0.0",
+    "timestamp": "2025-08-29T08:07:24.696259Z"
+  },
+  "RxDataSources": {
+    "version": "5.0.0",
+    "timestamp": "2025-08-29T08:07:26.191393Z"
+  },
+  "RxKeyboard": {
+    "version": "2.0.0",
+    "timestamp": "2025-08-29T08:07:27.714259Z"
+  },
+  "RxSwift": {
+    "version": "6.6.0",
+    "timestamp": "2025-08-29T08:07:29.733415Z"
+  },
+  "RxSwiftExt": {
+    "version": "6.2.1",
+    "timestamp": "2025-08-29T08:07:34.741252Z"
+  },
+  "SkeletonView": {
+    "version": "1.30.1",
+    "timestamp": "2025-08-29T08:07:36.307170Z"
+  },
+  "sourcekitten": {
+    "version": "0.33.1",
+    "timestamp": "2025-08-29T08:07:37.842955Z"
+  },
+  "SVProgressHUD": {
+    "version": "2.3.1",
+    "timestamp": "2025-08-29T08:07:39.377599Z"
+  },
+  "swift-argument-parser": {
+    "version": "1.2.3",
+    "timestamp": "2025-08-29T08:07:40.939737Z"
+  },
+  "swift-protobuf": {
+    "version": "1.31.0",
+    "timestamp": "2025-08-29T08:07:43.639640Z"
+  },
+  "swift-syntax": {
+    "version": "HEAD",
+    "timestamp": "2025-08-29T08:07:46.273063Z"
+  },
+  "SwiftLint": {
+    "version": "0.50.1",
+    "timestamp": "2025-08-29T08:07:48.046650Z"
+  },
+  "swiftytexttable": {
+    "version": "0.9.0",
+    "timestamp": "2025-08-29T08:07:49.517609Z"
+  },
+  "swxmlhash": {
+    "version": "7.0.2",
+    "timestamp": "2025-08-29T08:07:50.903348Z"
+  },
+  "TensorFlowLiteC": {
+    "version": "2.14.0",
+    "timestamp": "2025-08-29T08:07:54.134014Z"
+  },
+  "yams": {
+    "version": "5.4.0",
+    "timestamp": "2025-08-29T08:07:55.630255Z"
+  },
+  "ZIPFoundation": {
+    "version": "0.9.19",
+    "timestamp": "2025-08-29T08:07:57.348190Z"
+  }
+}

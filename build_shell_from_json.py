@@ -663,13 +663,10 @@ def _markdown_escape(s: str) -> str:
     return str(s or '').replace('|', '\\|')
 
 def _rows_to_markdown(rows: List[Dict]) -> str:
-    # Headers
-    md = ["| Package | Version | Clone | Binaries | Remaining | Errors |", "|---|---:|:---:|---:|---:|---|"]
+    """Render a minimal matrix with only Package and Version columns."""
+    md = ["| Package | Version |", "|---|---|"]
     for r in sorted(rows, key=lambda x: (x.get('Package') or '').lower()):
-        md.append(
-            f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} | "
-            f"{_markdown_escape(r.get('Clone'))} | {r.get('Binaries')} | {r.get('Remaining')} | {_markdown_escape(r.get('Errors'))} |"
-        )
+        md.append(f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} |")
     return "\n".join(md)
 
 def update_readme_with_matrix(rows: List[Dict]):

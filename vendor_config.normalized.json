@@ -284,7 +284,10 @@
       ],
       "xcframeworks": [],
       "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required.",
-      "packageName": "GoogleMaps"
+      "packageName": "GoogleMaps",
+      "postCloneCommands": [
+        "python3 -c \"p='Package.swift'; s=open(p).read(); s=s.replace('dependencies: [\\\"GoogleMaps\\\"]','dependencies: [\\\"GoogleMaps\\\", \\\"GoogleMapsCoreTarget\\\", \\\"GoogleMapsBaseTarget\\\"]'); s=s.replace('dependencies: [\\\"GoogleMapsCore\\\"]','dependencies: [\\\"GoogleMapsCore\\\", \\\"GoogleMapsBaseTarget\\\"]'); open(p,'w').write(s)\""
+      ]
     },
     {
       "name": "GooglePlaces",

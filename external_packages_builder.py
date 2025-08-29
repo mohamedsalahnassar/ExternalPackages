@@ -663,7 +663,10 @@ def _markdown_escape(s: str) -> str:
     return str(s or '').replace('|', '\\|')
 
 def _rows_to_markdown(rows: List[Dict]) -> str:
-    """Render a minimal matrix with only Package and Version columns."""
+    """Render a minimal matrix with only Package and Version columns.
+    This helper converts a list of row dicts to lines; use merge logic in
+    update_readme_with_matrix to preserve existing entries.
+    """
     md = ["| Package | Version |", "|---|---|"]
     for r in sorted(rows, key=lambda x: (x.get('Package') or '').lower()):
         md.append(f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} |")
@@ -672,7 +675,30 @@ def _rows_to_markdown(rows: List[Dict]) -> str:
 def update_readme_with_matrix(rows: List[Dict]):
     import datetime, pathlib, re
     readme = pathlib.Path("README.md")
-    matrix = _rows_to_markdown(rows)
+    # Build mapping for new rows
+    new_map = {str(r.get('Package') or ''): str(r.get('Version') or '') for r in rows}
+    # Parse existing matrix (if any) and merge so partial runs keep full list
+    existing_map: Dict[str, str] = {}
+    if readme.exists():
+        text = readme.read_text()
+        m = re.search(r"<!-- BEGIN VENDOR MATRIX -->([\s\S]*?)<!-- END VENDOR MATRIX -->", text)
+        if m:
+            block = m.group(1)
+            for line in (block.splitlines() if block else []):
+                line = line.strip()
+                if not line.startswith('|'):
+                    continue
+                if line.startswith('|---'):
+                    continue
+                parts = [p.strip() for p in line.strip('|').split('|')]
+                if len(parts) >= 2 and parts[0] and parts[0] != 'Package':
+                    existing_map[parts[0]] = parts[1]
+    # Merge: new rows override existing; keep all others
+    merged = existing_map.copy()
+    merged.update({k: v for k, v in new_map.items() if k})
+    # Convert merged back to rows for rendering
+    merged_rows = [{"Package": k, "Version": merged[k]} for k in merged.keys()]
+    matrix = _rows_to_markdown(merged_rows)
     stamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + 'Z'
     block = f"<!-- BEGIN VENDOR MATRIX -->\nLast updated: `{stamp}`\n\n{matrix}\n<!-- END VENDOR MATRIX -->\n"
     if not readme.exists():

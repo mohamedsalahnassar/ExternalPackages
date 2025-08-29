@@ -4,3 +4,4 @@
 /Vendor
 /Shell/.build
 /Shell/.swiftpm
+.DS_Store

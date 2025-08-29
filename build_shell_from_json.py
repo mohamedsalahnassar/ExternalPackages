@@ -29,6 +29,9 @@ URL_FIELD_RE    = re.compile(r'url\s*:\s*"(?P<url>[^"]+)"')
 CHKSUM_FIELD_RE = re.compile(r'checksum\s*:\s*"(?P<sum>[a-fA-F0-9]{64})"')
 PATH_FIELD_RE   = re.compile(r'path\s*:\s*"(?P<path>[^"]+)"')
 
+# For dependency URL patching
+PKG_DEP_URL_RE = re.compile(r"\.package\s*\(\s*url\s*:\s*\"([^\"]+)\"\s*,[^\)]*\)")
+
 # ---------- Done registry ----------
 def _done_registry_path(vendor_dir):
     return os.path.join(vendor_dir, ".packages_done.json")
@@ -218,6 +221,57 @@ def patch_manifest_to_path(pkg_swift_path: str, target_name: str, rel_path: str)
         return f'.binaryTarget(name: "{target_name}", {body})'
     new = BIN_RE.sub(lambda m: repl(m) if m.group("name")==target_name else m.group(0), txt)
     pathlib.Path(pkg_swift_path).write_text(new)
+
+def _normalize_git_url(u: str) -> str:
+    try:
+        u = (u or "").strip()
+        if u.endswith('.git'):
+            u = u[:-4]
+        u = u.replace('git@github.com:', 'https://github.com/')
+        # Remove trailing slashes
+        while u.endswith('/'):
+            u = u[:-1]
+        return u.lower()
+    except Exception:
+        return (u or '').lower()
+
+def patch_manifest_deps_to_local(pkg_swift_path: str, pkg_dir: str, vendor_root: str, cfg: Dict):
+    """Replace remote .package(url: ...) deps with path-based ones if the URL matches a vendored package."""
+    try:
+        txt = pathlib.Path(pkg_swift_path).read_text()
+    except Exception:
+        return
+    # Build lookup from normalized git url -> local relative path
+    url_to_rel: Dict[str, str] = {}
+    for e in (cfg.get('packages') or []):
+        git = e.get('git') or ''
+        name = e.get('name') or ''
+        if not git or not name:
+            continue
+        nurl = _normalize_git_url(git)
+        local_abs = os.path.join(vendor_root, name)
+        rel = os.path.relpath(local_abs, start=os.path.dirname(pkg_swift_path))
+        url_to_rel[nurl] = rel
+
+    changed = False
+    def repl(m):
+        nonlocal changed
+        url = m.group(1)
+        nurl = _normalize_git_url(url)
+        rel = url_to_rel.get(nurl)
+        if rel:
+            changed = True
+            return f'.package(path: "{rel}")'
+        return m.group(0)
+
+    new_txt = PKG_DEP_URL_RE.sub(repl, txt)
+    if changed:
+        # Normalize accidental double-closing parentheses like ')).' after replacement
+        new_txt = re.sub(r"(\.package\s*\(\s*path\s*:\s*\"[^\"]+\"\s*\)\))", lambda m: m.group(1)[:-1], new_txt)
+        new_txt = re.sub(r"\.package\s*\(\s*path\s*:\s*\"([^\"]+)\"\s*\)\s*,\s*\)", r'.package(path: "\1")', new_txt)
+    if changed and new_txt != txt:
+        pathlib.Path(pkg_swift_path).write_text(new_txt)
+        info(f"Patched dependencies to local paths in {pkg_swift_path}")
 
 # ---------- Download + Extract ----------
 def download_file(url, dest, token=None, extra_headers=None):
@@ -726,6 +780,11 @@ def main():
             _mark_pkg_done(str(vendor_root), name, target_ver, str(pkg_dir))
             rows_for_print.append(row)
             continue
+        # First, patch remote dependency URLs inside manifest to local path-based ones
+        try:
+            patch_manifest_deps_to_local(str(pkg_swift_path), str(pkg_dir), str(vendor_root), cfg)
+        except Exception as e:
+            warn(f"Could not patch manifest deps for {name}: {e}")
         pkg_swift = pkg_swift_path.read_text()
 
         bins = find_binary_targets(pkg_swift)

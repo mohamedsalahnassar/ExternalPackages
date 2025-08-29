@@ -49,7 +49,7 @@ let package = Package(
         .package(path: "../Vendor/RxSwiftExt"),
         .package(path: "../Vendor/SkeletonView"),
         .package(path: "../Vendor/SVProgressHUD"),
-        .package(path: "../Vendor/SwiftLint"),
+//        .package(path: "../Vendor/SwiftLint"),
         .package(path: "../Vendor/TensorFlowLiteC"),
         .package(path: "../Vendor/ZIPFoundation"),
     ],
@@ -110,7 +110,7 @@ let package = Package(
                 .product(name: "RxSwiftExt", package: "RxSwiftExt"),
                 .product(name: "SkeletonView", package: "SkeletonView"),
                 .product(name: "SVProgressHUD", package: "SVProgressHUD"),
-                .product(name: "SwiftLintFramework", package: "SwiftLint"),
+//                .product(name: "SwiftLintFramework", package: "SwiftLint"),
                 .product(name: "TensorFlowLiteC", package: "TensorFlowLiteC"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]

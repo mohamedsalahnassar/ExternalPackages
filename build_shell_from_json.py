@@ -658,6 +658,36 @@ def print_table(rows):
         print(" | ".join(pad(r.get(c, ""), widths[c]) for c in cols))
     print()
 
+# ---------- README updater ----------
+def _markdown_escape(s: str) -> str:
+    return str(s or '').replace('|', '\\|')
+
+def _rows_to_markdown(rows: List[Dict]) -> str:
+    # Headers
+    md = ["| Package | Version | Clone | Binaries | Remaining | Errors |", "|---|---:|:---:|---:|---:|---|"]
+    for r in sorted(rows, key=lambda x: (x.get('Package') or '').lower()):
+        md.append(
+            f"| {_markdown_escape(r.get('Package'))} | {_markdown_escape(r.get('Version'))} | "
+            f"{_markdown_escape(r.get('Clone'))} | {r.get('Binaries')} | {r.get('Remaining')} | {_markdown_escape(r.get('Errors'))} |"
+        )
+    return "\n".join(md)
+
+def update_readme_with_matrix(rows: List[Dict]):
+    import datetime, pathlib, re
+    readme = pathlib.Path("README.md")
+    matrix = _rows_to_markdown(rows)
+    stamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + 'Z'
+    block = f"<!-- BEGIN VENDOR MATRIX -->\nLast updated: `{stamp}`\n\n{matrix}\n<!-- END VENDOR MATRIX -->\n"
+    if not readme.exists():
+        readme.write_text(block)
+        return
+    text = readme.read_text()
+    if "<!-- BEGIN VENDOR MATRIX -->" in text and "<!-- END VENDOR MATRIX -->" in text:
+        new = re.sub(r"<!-- BEGIN VENDOR MATRIX -->[\s\S]*?<!-- END VENDOR MATRIX -->", block, text)
+    else:
+        new = text.rstrip() + "\n\n" + block + "\n"
+    readme.write_text(new)
+
 # ---------- Helpers ----------
 def run_post_commands(pkg_dir: str, cmds: List[str], env: Dict = None) -> Tuple[bool, List[str]]:
     """Run post-clone commands inside the package directory. Returns (ok, errors)."""
@@ -1028,6 +1058,12 @@ def main():
     _cleanup_all_git(vendor_root)
     all_shell_include = _scan_vendor_for_shell(vendor_root, cfg)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
+    # Update README live matrix
+    try:
+        update_readme_with_matrix(rows_for_print)
+        good("README matrix updated")
+    except Exception as e:
+        warn(f"Could not update README matrix: {e}")
 
 if __name__ == "__main__":
     try:

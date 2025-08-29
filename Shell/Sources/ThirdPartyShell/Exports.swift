@@ -19,8 +19,6 @@
 @_exported import DGCharts
 @_exported import DeviceKit
 @_exported import Differentiator
-@_exported import FirebaseABTesting
-@_exported import FirebaseCore
 @_exported import FirebaseCrashlytics
 @_exported import FirebaseInstallations
 @_exported import FirebaseMessaging
@@ -37,10 +35,11 @@
 @_exported import InsiderMobileAdvancedNotification
 @_exported import KeychainAccess
 @_exported import Kingfisher
+@_exported import Lottie
 @_exported import MEPSDK
 @_exported import MGSwipeTableCell
 @_exported import Mantis
-@_exported import PromisesObjC
+@_exported import Promises
 @_exported import RxBlocking
 @_exported import RxCocoa
 @_exported import RxDataSources
@@ -51,9 +50,8 @@
 @_exported import RxTest
 @_exported import SVProgressHUD
 @_exported import SkeletonView
-@_exported import SwiftLint
+@_exported import SwiftLintFramework
 @_exported import TensorFlowLiteC
 @_exported import ZIPFoundation
 @_exported import iProov
-@_exported import lottie-ios
 @_exported import nanopb

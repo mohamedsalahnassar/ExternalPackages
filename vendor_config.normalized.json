@@ -11,7 +11,8 @@
       "products": [
         "AEPAnalytics"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPAnalytics"
     },
     {
       "name": "AEPAssurance",
@@ -22,7 +23,8 @@
       "products": [
         "AEPAssurance"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPAssurance"
     },
     {
       "name": "AEPCore",
@@ -37,7 +39,8 @@
         "AEPServices",
         "AEPSignal"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPCore"
     },
     {
       "name": "AEPEdge",
@@ -48,7 +51,8 @@
       "products": [
         "AEPEdge"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPEdge"
     },
     {
       "name": "AEPEdgeConsent",
@@ -59,7 +63,8 @@
       "products": [
         "AEPEdgeConsent"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPEdgeConsent"
     },
     {
       "name": "AEPEdgeIdentity",
@@ -70,7 +75,8 @@
       "products": [
         "AEPEdgeIdentity"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPEdgeIdentity"
     },
     {
       "name": "AEPRulesEngine",
@@ -81,7 +87,8 @@
       "products": [
         "AEPRulesEngine"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPRulesEngine"
     },
     {
       "name": "AEPTarget",
@@ -92,7 +99,8 @@
       "products": [
         "AEPTarget"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "AEPTarget"
     },
     {
       "name": "Alamofire",
@@ -104,7 +112,8 @@
         "Alamofire"
       ],
       "xcframeworks": [],
-      "notes": "SPM introduced in 5.x"
+      "notes": "SPM introduced in 5.x",
+      "packageName": "Alamofire"
     },
     {
       "name": "AlamofireNetworkActivityLogger",
@@ -116,7 +125,8 @@
         "AlamofireNetworkActivityLogger"
       ],
       "xcframeworks": [],
-      "notes": "Use a fork that supports SPM (e.g., konkab/AlamofireNetworkActivityLogger >=3.x), or replace with NetworkActivityLogger alternative."
+      "notes": "Use a fork that supports SPM (e.g., konkab/AlamofireNetworkActivityLogger >=3.x), or replace with NetworkActivityLogger alternative.",
+      "packageName": "AlamofireNetworkActivityLogger"
     },
     {
       "name": "AppDynamicsAgent",
@@ -128,7 +138,8 @@
         "AppDynamicsAgent"
       ],
       "xcframeworks": [],
-      "notes": "SPM added in 23.10.x"
+      "notes": "SPM added in 23.10.x",
+      "packageName": "AppDynamicsAgent"
     },
     {
       "name": "BigInt",
@@ -139,7 +150,8 @@
       "products": [
         "BigInt"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "BigInt"
     },
     {
       "name": "CryptoSwift",
@@ -150,7 +162,8 @@
       "products": [
         "CryptoSwift"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "CryptoSwift"
     },
     {
       "name": "DeviceKit",
@@ -161,7 +174,8 @@
       "products": [
         "DeviceKit"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "DeviceKit"
     },
     {
       "name": "DGCharts",
@@ -173,10 +187,11 @@
         "DGCharts"
       ],
       "xcframeworks": [],
-      "notes": "SPM added around Charts/DGCharts 4.0.1"
+      "notes": "SPM added around Charts/DGCharts 4.0.1",
+      "packageName": "DGCharts"
     },
     {
-      "name": "Differentiator",
+      "name": "RxDataSources",
       "currentVersion": "5.0.0",
       "spmSupported": true,
       "targetVersion": "5.0.0",
@@ -185,24 +200,24 @@
         "Differentiator",
         "RxDataSources"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "RxDataSources"
     },
     {
-      "name": "FirebaseABTesting",
+      "name": "Firebase",
       "currentVersion": "8.9.0",
       "spmSupported": true,
       "targetVersion": "8.9.1",
       "git": "https://github.com/firebase/firebase-ios-sdk.git",
       "products": [
-        "FirebaseABTesting",
-        "FirebaseCore",
         "FirebaseCrashlytics",
         "FirebaseInstallations",
         "FirebaseMessaging",
         "FirebasePerformance",
         "FirebaseRemoteConfig"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "Firebase"
     },
     {
       "name": "FloatingPanel",
@@ -213,7 +228,8 @@
       "products": [
         "FloatingPanel"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "FloatingPanel"
     },
     {
       "name": "GoogleDataTransport",
@@ -224,7 +240,8 @@
       "products": [
         "GoogleDataTransport"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "GoogleDataTransport"
     },
     {
       "name": "GoogleMaps",
@@ -236,7 +253,8 @@
         "GoogleMaps"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google’s SPM repo; upgrade required."
+      "notes": "SPM distribution uses Google’s SPM repo; upgrade required.",
+      "packageName": "GoogleMaps"
     },
     {
       "name": "GooglePlaces",
@@ -248,10 +266,11 @@
         "GooglePlaces"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google’s SPM repo; upgrade required."
+      "notes": "SPM distribution uses Google’s SPM repo; upgrade required.",
+      "packageName": "GooglePlaces"
     },
     {
-      "name": "InsiderMobile",
+      "name": "Insider",
       "currentVersion": "1.2.2",
       "spmSupported": true,
       "targetVersion": "1.4.1",
@@ -261,7 +280,8 @@
         "InsiderMobileAdvancedNotification"
       ],
       "xcframeworks": [],
-      "notes": "Vendor docs indicate SPM support; confirm exact minimum."
+      "notes": "Vendor docs indicate SPM support; confirm exact minimum.",
+      "packageName": "Insider"
     },
     {
       "name": "IOSSecuritySuite",
@@ -272,7 +292,8 @@
       "products": [
         "IOSSecuritySuite"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "IOSSecuritySuite"
     },
     {
       "name": "iProov",
@@ -284,7 +305,8 @@
         "iProov"
       ],
       "xcframeworks": [],
-      "notes": "SPM supported; confirm exact minimum for your SDK plan."
+      "notes": "SPM supported; confirm exact minimum for your SDK plan.",
+      "packageName": "iProov"
     },
     {
       "name": "IQKeyboardManagerSwift",
@@ -296,7 +318,8 @@
         "IQKeyboardManagerSwift"
       ],
       "xcframeworks": [],
-      "notes": "SPM supported from 6.5.0"
+      "notes": "SPM supported from 6.5.0",
+      "packageName": "IQKeyboardManagerSwift"
     },
     {
       "name": "ISPageControl",
@@ -311,7 +334,8 @@
       "postCloneCommands": [
         "mkdir -p Sources/ISPageControl",
         "if [ -f Sources/ISPageControl.swift ]; then mv -f Sources/ISPageControl.swift Sources/ISPageControl/ISPageControl.swift; fi"
-      ]
+      ],
+      "packageName": "ISPageControl"
     },
     {
       "name": "KeychainAccess",
@@ -323,7 +347,8 @@
         "KeychainAccess"
       ],
       "xcframeworks": [],
-      "notes": "SPM added in 4.x"
+      "notes": "SPM added in 4.x",
+      "packageName": "KeychainAccess"
     },
     {
       "name": "Kingfisher",
@@ -334,18 +359,20 @@
       "products": [
         "Kingfisher"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "Kingfisher"
     },
     {
-      "name": "lottie-ios",
+      "name": "Lottie",
       "currentVersion": "4.5.0",
       "spmSupported": true,
       "targetVersion": "4.5.0",
       "git": "https://github.com/airbnb/lottie-ios.git",
       "products": [
-        "lottie-ios"
+        "Lottie"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "Lottie"
     },
     {
       "name": "Mantis",
@@ -356,7 +383,8 @@
       "products": [
         "Mantis"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "Mantis"
     },
     {
       "name": "MEPSDK",
@@ -367,7 +395,8 @@
       "products": [
         "MEPSDK"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "MEPSDK"
     },
     {
       "name": "MGSwipeTableCell",
@@ -378,7 +407,8 @@
       "products": [
         "MGSwipeTableCell"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "MGSwipeTableCell"
     },
     {
       "name": "nanopb",
@@ -390,21 +420,23 @@
         "nanopb"
       ],
       "xcframeworks": [],
-      "notes": "Brought transitively by Firebase in SPM; you don't add it directly."
+      "notes": "Brought transitively by Firebase in SPM; you don't add it directly.",
+      "packageName": "nanopb"
     },
     {
-      "name": "PromisesObjC",
+      "name": "Promises",
       "currentVersion": "2.0.0",
       "spmSupported": true,
       "targetVersion": "2.0.0",
       "git": "https://github.com/google/promises.git",
       "products": [
-        "PromisesObjC"
+        "Promises"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "Promises"
     },
     {
-      "name": "RxBlocking",
+      "name": "RxSwift",
       "currentVersion": "6.6.0",
       "spmSupported": true,
       "targetVersion": "6.6.0",
@@ -416,7 +448,8 @@
         "RxSwift",
         "RxTest"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "RxSwift"
     },
     {
       "name": "RxKeyboard",
@@ -427,7 +460,8 @@
       "products": [
         "RxKeyboard"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "RxKeyboard"
     },
     {
       "name": "RxSwiftExt",
@@ -438,7 +472,8 @@
       "products": [
         "RxSwiftExt"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "RxSwiftExt"
     },
     {
       "name": "SkeletonView",
@@ -449,7 +484,8 @@
       "products": [
         "SkeletonView"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "SkeletonView"
     },
     {
       "name": "SVProgressHUD",
@@ -460,7 +496,8 @@
       "products": [
         "SVProgressHUD"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "SVProgressHUD"
     },
     {
       "name": "SwiftLint",
@@ -469,9 +506,10 @@
       "targetVersion": "0.50.1",
       "git": "https://github.com/realm/SwiftLint.git",
       "products": [
-        "SwiftLint"
+        "SwiftLintFramework"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "SwiftLint"
     },
     {
       "name": "TensorFlowLiteC",
@@ -483,7 +521,8 @@
         "TensorFlowLiteC"
       ],
       "xcframeworks": [],
-      "notes": "Unofficial SPM; consider vendoring binary if policies require official sources"
+      "notes": "Unofficial SPM; consider vendoring binary if policies require official sources",
+      "packageName": "TensorFlowLiteC"
     },
     {
       "name": "ZIPFoundation",
@@ -494,7 +533,8 @@
       "products": [
         "ZIPFoundation"
       ],
-      "xcframeworks": []
+      "xcframeworks": [],
+      "packageName": "ZIPFoundation"
     }
   ]
 }

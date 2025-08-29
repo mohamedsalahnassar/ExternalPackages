@@ -9,9 +9,9 @@ let package = Package(
         .library(name: "SourceKittenFramework", targets: ["SourceKittenFramework"])
     ],
     dependencies: [
-        .package(name: "swift-argument-parser", url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.3"),
-        .package(name: "SWXMLHash", url: "https://github.com/drmohundro/SWXMLHash.git", .upToNextMinor(from: "7.0.1")),
-        .package(name: "Yams", url: "https://github.com/jpsim/Yams.git", from: "5.0.1"),
+        .package(name: "swift-argument-parser", path: "../swift-argument-parser"),
+        .package(name: "SWXMLHash", path: "../swxmlhash"),
+        .package(name: "Yams", path: "../yams"),
     ],
     targets: [
         .executableTarget(

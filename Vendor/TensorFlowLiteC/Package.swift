@@ -21,13 +21,7 @@ let package = Package(
             name: "Link",
             linkerSettings: [.linkedLibrary("c++")]
         ),
-        .binaryTarget(name: "TensorFlowLiteC", 
-            path: "Binaries/TensorFlowLiteC.xcframework",
-            
-        ),
-        .binaryTarget(name: "TensorFlowLiteCCoreML", 
-            path: "Binaries/TensorFlowLiteCCoreML.xcframework",
-            
-        )
+        .binaryTarget(name: "TensorFlowLiteC", path: "Binaries/TensorFlowLiteC.xcframework"),
+        .binaryTarget(name: "TensorFlowLiteCCoreML", path: "Binaries/TensorFlowLiteCCoreML.xcframework")
     ]
 )

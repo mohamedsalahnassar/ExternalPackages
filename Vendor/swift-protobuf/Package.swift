@@ -54,10 +54,7 @@ let package = Package(
             dependencies: ["SwiftProtobuf"],
             swiftSettings: .packageSettings
         ),
-        .binaryTarget(name: "protoc", 
-            path: "Binaries/protoc-31.1.artifactbundle",
-            
-        ),
+        .binaryTarget(name: "protoc", path: "Binaries/protoc-31.1.artifactbundle"),
         .executableTarget(
             name: "protoc-gen-swift",
             dependencies: ["SwiftProtobufPluginLibrary", "SwiftProtobuf"],

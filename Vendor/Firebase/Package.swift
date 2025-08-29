@@ -129,63 +129,25 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(
-      name: "Promises",
-      url: "https://github.com/google/promises.git",
-      "1.2.8" ..< "3.0.0"
-    ),
-    .package(
-      name: "SwiftProtobuf",
-      url: "https://github.com/apple/swift-protobuf.git",
-      "1.15.0" ..< "2.0.0"
-    ),
-    .package(
-      name: "GoogleAppMeasurement",
-      url: "https://github.com/google/GoogleAppMeasurement.git",
-      // Note that CI changes the version to the head of main for CI.
-      // See scripts/setup_spm_tests.sh.
-      .exact("8.9.1")
-    ),
-    .package(
-      name: "GoogleDataTransport",
-      url: "https://github.com/google/GoogleDataTransport.git",
-      "9.1.2" ..< "10.0.0"
-    ),
-    .package(
-      name: "GoogleUtilities",
-      url: "https://github.com/google/GoogleUtilities.git",
-      "7.6.0" ..< "8.0.0"
-    ),
-    .package(
-      name: "GTMSessionFetcher",
-      url: "https://github.com/google/gtm-session-fetcher.git",
-      "1.5.0" ..< "2.0.0"
-    ),
+    .package(name: "Promises", path: "../Promises"),
+    .package(name: "SwiftProtobuf", path: "../swift-protobuf"),
+    .package(name: "GoogleAppMeasurement", path: "../googleappmeasurement"),
+    .package(name: "GoogleDataTransport", path: "../GoogleDataTransport"),
+    .package(name: "GoogleUtilities", path: "../googleutilities"),
+    .package(name: "GTMSessionFetcher", path: "../gtm-session-fetcher"),
     .package(
       name: "nanopb",
       url: "https://github.com/firebase/nanopb.git",
       "2.30908.0" ..< "2.30909.0"
     ),
-    .package(
-      name: "abseil",
-      url: "https://github.com/firebase/abseil-cpp-SwiftPM.git",
-      "0.20200225.3" ..< "0.20200226.0"
-    ),
-    .package(
-      name: "gRPC",
-      url: "https://github.com/firebase/grpc-SwiftPM.git",
-      "1.28.4" ..< "1.29.0"
-    ),
+    .package(name: "abseil", path: "../abseil-cpp-swiftpm"),
+    .package(name: "gRPC", path: "../grpc-swiftpm"),
     .package(
       name: "OCMock",
       url: "https://github.com/erikdoe/ocmock.git",
       .revision("c5eeaa6dde7c308a5ce48ae4d4530462dd3a1110")
     ),
-    .package(
-      name: "leveldb",
-      url: "https://github.com/firebase/leveldb.git",
-      "1.22.2" ..< "1.23.0"
-    ),
+    .package(name: "leveldb", path: "../leveldb"),
     .package(
       name: "GCDWebServer",
       url: "https://github.com/SlaunchaMan/GCDWebServer.git",
@@ -295,10 +257,7 @@ let package = Package(
         .linkedFramework("StoreKit"),
       ]
     ),
-    .binaryTarget(name: "FirebaseAnalytics", 
-      path: "Binaries/FirebaseAnalytics.xcframework",
-      
-    ),
+    .binaryTarget(name: "FirebaseAnalytics", path: "Binaries/FirebaseAnalytics.xcframework"),
     .target(
       name: "FirebaseAnalyticsSwiftTarget",
       dependencies: [.target(name: "FirebaseAnalyticsSwift",

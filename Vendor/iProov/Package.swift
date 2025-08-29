@@ -12,10 +12,7 @@ let package = Package(
         )
     ],
     targets: [
-        .binaryTarget(name: "iProov", 
-            path: "Binaries/iProov.xcframework",
-            
-        ),
+        .binaryTarget(name: "iProov", path: "Binaries/iProov.xcframework"),
         .target(
             name: "iProovTargets",
             dependencies: [

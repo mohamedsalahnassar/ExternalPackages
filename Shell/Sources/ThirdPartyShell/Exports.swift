@@ -13,7 +13,7 @@
 @_exported import AEPTarget
 @_exported import Alamofire
 @_exported import AlamofireNetworkActivityLogger
-@_exported import AppDynamicsAgent
+@_exported import ADEUMInstrumentation
 @_exported import BigInt
 @_exported import CryptoSwift
 @_exported import DGCharts
@@ -53,12 +53,4 @@
 @_exported import TensorFlowLiteC
 @_exported import ZIPFoundation
 @_exported import iProov
-@_exported import leveldb
 @_exported import nanopb
-@_exported import sourcekitten
-@_exported import swift-argument-parser
-@_exported import swift-protobuf
-@_exported import swift-syntax
-@_exported import swiftytexttable
-@_exported import swxmlhash
-@_exported import yams

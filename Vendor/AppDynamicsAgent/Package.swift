@@ -28,8 +28,6 @@ let package = Package(
         .library(name: "AppDynamicsAgent", targets: ["ADEUMInstrumentation"]),
     ],
     targets: [
-        .binaryTarget(name: "ADEUMInstrumentation",
-                      url: "https://appdynamics.jfrog.io/artifactory/maven-releases/com/appdynamics/eum/iOSAgentSPM/2023.10.1.4260/iOSAgentSPM-2023.10.1.4260.zip",
-                      checksum: "1bc9716081fecf476a8f5002c1e38e46274e98ac2b94fd925a7a1c3a0c33e05d")
+        .binaryTarget(name: "ADEUMInstrumentation", path: "Binaries/ADEUMInstrumentation.xcframework")
     ]
 )

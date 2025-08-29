@@ -17,18 +17,9 @@ let package = Package(
             targets: ["InsiderMobileAdvancedNotification"])
     ],
     targets: [
-        .binaryTarget(name: "InsiderMobile", 
-            path: "Binaries/InsiderMobile.xcframework",
-            
-        ),
-        .binaryTarget(name: "InsiderGeofence", 
-            path: "Binaries/InsiderGeofence.xcframework",
-            
-        ),
-        .binaryTarget(name: "InsiderMobileAdvancedNotification", 
-            path: "Binaries/InsiderMobileAdvancedNotification.xcframework",
-            
-        ),
+        .binaryTarget(name: "InsiderMobile", path: "Binaries/InsiderMobile.xcframework"),
+        .binaryTarget(name: "InsiderGeofence", path: "Binaries/InsiderGeofence.xcframework"),
+        .binaryTarget(name: "InsiderMobileAdvancedNotification", path: "Binaries/InsiderMobileAdvancedNotification.xcframework"),
         .target(
             name: "InsiderNotificationContent",
             dependencies: ["InsiderMobileAdvancedNotification"],

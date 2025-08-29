@@ -25,7 +25,7 @@ let package = Package(
   ],
   dependencies: [],
   targets: [
-    .binaryTarget(name: "GooglePlaces",  path: "Binaries/GooglePlaces.xcframework", ),
+    .binaryTarget(name: "GooglePlaces", path: "Binaries/GooglePlaces.xcframework"),
     .target(
       name: "GooglePlacesTarget",
       dependencies: ["GooglePlaces"],

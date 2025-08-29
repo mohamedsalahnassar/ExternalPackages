@@ -31,11 +31,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(
-      name: "GoogleUtilities",
-      url: "https://github.com/google/GoogleUtilities.git",
-      "7.2.1" ..< "8.0.0"
-    ),
+    .package(name: "GoogleUtilities", path: "../googleutilities"),
     .package(
       name: "nanopb",
       url: "https://github.com/firebase/nanopb.git",
@@ -80,14 +76,8 @@ let package = Package(
         .linkedFramework("StoreKit"),
       ]
     ),
-    .binaryTarget(name: "GoogleAppMeasurement", 
-      path: "Binaries/GoogleAppMeasurement.xcframework",
-      
-    ),
-    .binaryTarget(name: "GoogleAppMeasurementIdentitySupport", 
-      path: "Binaries/GoogleAppMeasurementIdentitySupport.xcframework",
-      
-    ),
+    .binaryTarget(name: "GoogleAppMeasurement", path: "Binaries/GoogleAppMeasurement.xcframework"),
+    .binaryTarget(name: "GoogleAppMeasurementIdentitySupport", path: "Binaries/GoogleAppMeasurementIdentitySupport.xcframework"),
   ],
   cLanguageStandard: .c99,
   cxxLanguageStandard: CXXLanguageStandard.gnucxx14

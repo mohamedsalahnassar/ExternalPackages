@@ -27,9 +27,7 @@ let package = Package(
     .library(name: "GoogleMapsM4B", targets: ["GoogleMapsM4BTarget"]),
   ], dependencies: [],
   targets: [
-    .binaryTarget(name: "GoogleMaps",  path: "Binaries/GoogleMaps.xcframework",
-      
-    ),
+    .binaryTarget(name: "GoogleMaps", path: "Binaries/GoogleMaps.xcframework"),
     .target(
       name: "GoogleMapsTarget",
       dependencies: ["GoogleMaps", "GoogleMapsCoreTarget", "GoogleMapsBaseTarget"],
@@ -56,9 +54,7 @@ let package = Package(
         .linkedFramework("UIKit"),
       ]
     ),
-    .binaryTarget(name: "GoogleMapsCore",  path: "Binaries/GoogleMapsCore.xcframework",
-      
-    ),
+    .binaryTarget(name: "GoogleMapsCore", path: "Binaries/GoogleMapsCore.xcframework"),
     .target(
       name: "GoogleMapsCoreTarget",
       dependencies: ["GoogleMapsCore", "GoogleMapsBaseTarget"],
@@ -66,9 +62,7 @@ let package = Package(
       sources: ["GMSEmpty.m"],
       publicHeadersPath: "Sources"
     ),
-    .binaryTarget(name: "GoogleMapsBase",  path: "Binaries/GoogleMapsBase.xcframework",
-      
-    ),
+    .binaryTarget(name: "GoogleMapsBase", path: "Binaries/GoogleMapsBase.xcframework"),
     .target(
       name: "GoogleMapsBaseTarget",
       dependencies: ["GoogleMapsBase"],
@@ -76,9 +70,7 @@ let package = Package(
       sources: ["GMSEmpty.m"],
       publicHeadersPath: "Sources"
     ),
-    .binaryTarget(name: "GoogleMapsM4B",  path: "Binaries/GoogleMapsM4B.xcframework",
-      
-    ),
+    .binaryTarget(name: "GoogleMapsM4B", path: "Binaries/GoogleMapsM4B.xcframework"),
     .target(
       name: "GoogleMapsM4BTarget",
       dependencies: ["GoogleMapsM4B"],

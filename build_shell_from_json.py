@@ -535,8 +535,13 @@ def remove_git_dir(path: str):
 def _products_for_package(cfg: Dict, name: str) -> List[str]:
     for e in (cfg.get("packages") or []):
         if (e.get("name") or "").strip() == name:
-            prods = e.get("products") or [name]
-            return [p for p in prods if p]
+            # Respect explicit empty list (means: no products to wire)
+            if "products" in e:
+                prods = e.get("products")
+                prods = prods if prods is not None else [name]
+            else:
+                prods = [name]
+            return [p for p in (prods or []) if p]
     return [name]
 
 _PKG_NAME_RE = re.compile(r"let\s+package\s*=\s*Package\s*\(\s*name\s*:\s*\"([^\"]+)\"", re.S)
@@ -611,18 +616,23 @@ def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: s
         name = p.get("name")
         if not name:
             continue
-        if name not in seen_deps:
-            rel_path = os.path.relpath(os.path.join(str(vendor_dir), name), start="Shell")
-            dep_lines.append(f'        .package(path: "{rel_path}"),')
-            seen_deps.add(name)
-        products = p.get("products") or [name]
+        products = p.get("products") or []
         available = set(p.get("availableProducts") or [])
-        # Use dependency name as declared in dependencies list (path basename)
-        pkg_label = name
+        # Determine which products we will attach for this package
+        to_attach = []
         for prod in products:
             if available and prod not in available:
                 warn(f"Skipping unknown product '{prod}' in package '{name}' (available: {sorted(list(available))[:6]}...)")
                 continue
+            to_attach.append(prod)
+        # Only include the package dependency if at least one product is attached
+        if to_attach and name not in seen_deps:
+            rel_path = os.path.relpath(os.path.join(str(vendor_dir), name), start="Shell")
+            dep_lines.append(f'        .package(path: "{rel_path}"),')
+            seen_deps.add(name)
+        # Use dependency name as declared in dependencies list (path basename)
+        pkg_label = name
+        for prod in to_attach:
             # Attach each declared product from the package
             key = (prod, name)
             if key in seen_prod_pairs:
@@ -664,11 +674,20 @@ let package = Package(
     (shell_dir / "Package.swift").write_text(pkg_txt)
 
     # Re-export modules for convenience
-    exported = set()
+    # Export only the products that were actually added to the target deps
+    added_products = set()
     for p in included_pkgs:
-        for prod in (p.get("products") or []):
-            exported.add(prod)
-    exports_src = "// Auto-generated re-exports\n" + "\n".join([f"@_exported import {m}" for m in sorted(exported)])
+        products = p.get("products") or []
+        available = set(p.get("availableProducts") or [])
+        for prod in products:
+            if available and prod not in available:
+                continue
+            added_products.add(prod)
+    # Filter out names that are not valid Swift module identifiers (e.g., contain hyphens)
+    def is_valid_swift_ident(x: str) -> bool:
+        return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", x or ""))
+    exported = [m for m in sorted(added_products) if is_valid_swift_ident(m)]
+    exports_src = "// Auto-generated re-exports\n" + "\n".join([f"@_exported import {m}" for m in exported])
     (src_dir / "Exports.swift").write_text(exports_src)
 
     good(f"Shell package generated → {shell_dir / 'Package.swift'}")

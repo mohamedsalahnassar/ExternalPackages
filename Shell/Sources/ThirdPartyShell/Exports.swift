@@ -50,16 +50,8 @@
 @_exported import RxTest
 @_exported import SVProgressHUD
 @_exported import SkeletonView
-@_exported import SwiftLintFramework
 @_exported import TensorFlowLiteC
 @_exported import ZIPFoundation
-@_exported import abseil-cpp-swiftpm
-@_exported import boringssl-swiftpm
-@_exported import collectionconcurrencykit
-@_exported import googleappmeasurement
-@_exported import googleutilities
-@_exported import grpc-swiftpm
-@_exported import gtm-session-fetcher
 @_exported import iProov
 @_exported import leveldb
 @_exported import nanopb

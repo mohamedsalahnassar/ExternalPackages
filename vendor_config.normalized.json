@@ -248,7 +248,8 @@
       "xcframeworks": [],
       "packageName": "FloatingPanel",
       "postCloneCommands": [
-        "python3 -c \"import re; p='Package.swift'; s=open(p).read(); s=re.sub(r'\\.iOS\\(\\.v(\\d+)\\)', lambda m: f'.iOS(.v{max(int(m.group(1)),13)})', s); open(p,'w').write(s)\""
+        "python3 -c \"import re; p='Package.swift'; s=open(p).read(); s=re.sub(r'\\.iOS\\(\\.v(\\d+)\\)', lambda m: f'.iOS(.v{max(int(m.group(1)),13)})', s); open(p,'w').write(s)\"",
+        "python3 -c \"import re; p='Package.swift'; s=open(p).read(); s=re.sub(r'^// swift-tools-version:\\s*[0-9.]+', '// swift-tools-version: 5.5', s, flags=re.M); open(p,'w').write(s)\""
       ]
     },
     {
@@ -631,9 +632,7 @@
       "spmSupported": true,
       "targetVersion": "0.50.1",
       "git": "https://github.com/realm/SwiftLint.git",
-      "products": [
-        "SwiftLintFramework"
-      ],
+      "products": [],
       "xcframeworks": [],
       "packageName": "SwiftLint"
     },

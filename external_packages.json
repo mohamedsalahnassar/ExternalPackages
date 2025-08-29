@@ -170,7 +170,7 @@
       "notes": "SPM added in 23.10.x",
       "packageName": "AppDynamicsAgent",
       "exports": [
-        "AppDynamicsAgent"
+        "ADEUMInstrumentation"
       ]
     },
     {

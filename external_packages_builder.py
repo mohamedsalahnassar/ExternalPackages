@@ -737,13 +737,28 @@ def run_post_commands(pkg_dir: str, cmds: List[str], env: Dict = None) -> Tuple[
             errs.append(msg)
     return len(errs) == 0, errs
 def remove_git_dir(path: str):
-    g = os.path.join(path, ".git")
-    if os.path.isdir(g):
+    """Remove VCS/CI metadata and lint files from a vendored repo.
+    Historically removed only .git; now also removes .github, .circleci,
+    .gitignore and .swiftlint.yml to keep the vendored copy minimal.
+    """
+    junk = [
+        ".git",
+        ".github",
+        ".circleci",
+        ".gitignore",
+        ".swiftlint.yml",
+    ]
+    for j in junk:
+        p = os.path.join(path, j)
         try:
-            shutil.rmtree(g)
-            dim(f"Removed git metadata → {g}")
+            if os.path.isdir(p):
+                shutil.rmtree(p)
+                dim(f"Removed {j} → {p}")
+            elif os.path.isfile(p):
+                os.remove(p)
+                dim(f"Removed {j} → {p}")
         except Exception as e:
-            warn(f"Could not remove {g}: {e}")
+            warn(f"Could not remove {p}: {e}")
 
 def _products_for_package(cfg: Dict, name: str) -> List[str]:
     for e in (cfg.get("packages") or []):
@@ -809,6 +824,32 @@ def _cleanup_all_git(vendor_root: pathlib.Path):
     for entry in vendor_root.iterdir():
         if entry.is_dir():
             remove_git_dir(str(entry))
+
+def _cleanup_vendor_tree(vendor_root: pathlib.Path):
+    """Run all cleanup actions against the vendored tree without recloning.
+    - Remove VCS/CI metadata (.git, .github, .circleci) and housekeeping files
+      (.gitignore, .swiftlint.yml) from each package directory.
+    - Remove any leftover binary archives under Binaries/*.zip.
+    """
+    vr = pathlib.Path(vendor_root)
+    if not vr.exists():
+        return
+    for entry in sorted(vr.iterdir(), key=lambda p: p.name.lower()):
+        if not entry.is_dir():
+            continue
+        remove_git_dir(str(entry))
+        # Prune binary zip archives
+        bins = entry / "Binaries"
+        if bins.is_dir():
+            try:
+                for z in bins.glob("*.zip"):
+                    try:
+                        z.unlink()
+                        dim(f"Removed archive → {z}")
+                    except Exception as e:
+                        warn(f"Could not remove {z}: {e}")
+            except Exception:
+                pass
 
 # ---------- Main ----------
 def _generate_shell_package(cfg: Dict, included_pkgs: List[Dict], vendor_root: str):
@@ -918,6 +959,7 @@ def main():
         help="Comma-separated package name(s) to process only these packages"
     )
     ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
+    ap.add_argument("--cleanup-only", action="store_true", help="Run cleanup across vendored tree without cloning or downloading")
     args = ap.parse_args()
     # Config path
     config_path = args.config or args.config_pos or "external_packages.json"
@@ -925,6 +967,35 @@ def main():
     cfg = json.load(open(config_path, "r"))
     vendor_root = pathlib.Path(cfg.get("vendorDir","External") if args.vendor_dir is None else args.vendor_dir)
     ensure_dir(vendor_root)
+
+    # Cleanup-only mode
+    if args.cleanup_only:
+        step(f"Running cleanup-only in {vendor_root} …")
+        _cleanup_vendor_tree(vendor_root)
+        # Also update README timestamp/matrix with current known package list from vendor dir
+        try:
+            # Build synthetic rows: read .done.json if present for version display
+            rows: List[Dict] = []
+            for pkg_dir in sorted(vendor_root.iterdir(), key=lambda p: p.name.lower()):
+                if not pkg_dir.is_dir():
+                    continue
+                version = ""
+                done_file = pkg_dir / ".done.json"
+                try:
+                    if done_file.exists():
+                        meta = json.loads(done_file.read_text())
+                        version = str(meta.get("version") or "")
+                except Exception:
+                    pass
+                rows.append({
+                    "Package": pkg_dir.name,
+                    "Version": version,
+                })
+            update_readme_with_matrix(rows)
+            good("Cleanup complete; README matrix updated")
+        except Exception as e:
+            warn(f"Cleanup complete; README update skipped: {e}")
+        return
 
     rows_for_print = []
     # Keep track of packages that are safe to include in the root package (have a Package.swift)

@@ -7,6 +7,7 @@ This repository vendors third‑party dependencies as Swift Packages into the `E
 - Mirrors transitive SwiftPM dependencies locally and rewrites manifests to path‑based `package(path:)` entries.
 - Generates a single root package (`ExternalPackages`) that re‑exports modules you use, so your app can simply `import ExternalPackages`.
 - Supports authenticated and anonymous binary hosts (GitHub Releases, Artifactory/JFrog, S3 redirects, etc.).
+- Cleans vendored repositories by removing VCS/CI metadata: `.git`, `.github`, `.circleci`, `.gitignore`, `.swiftlint.yml`.
 
 ## Quick Start
 1. Adjust the configuration in `external_packages.json` (names, versions, products).
@@ -15,6 +16,15 @@ This repository vendors third‑party dependencies as Swift Packages into the `E
    python3 external_packages_builder.py --force
    ```
 3. In Xcode, open the root `Package.swift` (package name: `ExternalPackages`) and build.
+
+
+### Cleanup Only
+Run the cleanup routine without recloning or downloading. This removes VCS/CI metadata and any leftover binary archives from `External/` and refreshes the README matrix.
+
+```bash
+python3 external_packages_builder.py --cleanup-only
+```
+
 
 ## Useful Flags
 - `--force` – reprocesses packages even if they were previously completed.

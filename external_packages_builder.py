@@ -1030,6 +1030,13 @@ def main():
                 rel = os.path.relpath(art_path, start=str(pkg_dir))
                 patch_manifest_to_path(str(pkg_swift_path), tname, rel)
                 good(f"{name}:{tname}: placed → {art_path}")
+                # remove downloaded archive to save space
+                try:
+                    if os.path.isfile(str(zip_path)):
+                        os.remove(str(zip_path))
+                        dim(f"Removed archive → {zip_path}")
+                except Exception:
+                    pass
                 replaced += 1
             finally:
                 if tmp_dir and os.path.isdir(tmp_dir):

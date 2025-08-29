@@ -1143,6 +1143,9 @@ def main():
     )
     ap.add_argument("--include-unsupported", action="store_true", help="Process packages marked spmSupported=false")
     ap.add_argument("--cleanup-only", action="store_true", help="Run cleanup across vendored tree without cloning or downloading")
+    ap.add_argument("--deep-clean", dest="deep_clean", action="store_true", help="Enable deep cleanup: trim files not referenced by Package.swift targets/resources")
+    # Backward-compat shorthand
+    ap.add_argument("--deepclean", dest="deep_clean", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--prune", action="store_true", help="Delete vendor folders not present in the config")
     args = ap.parse_args()
     # Config path
@@ -1155,7 +1158,7 @@ def main():
     # Cleanup-only mode
     if args.cleanup_only:
         step(f"Running cleanup-only in {vendor_root} …")
-        _cleanup_vendor_tree(vendor_root)
+        _cleanup_vendor_tree(vendor_root, deep=bool(args.deep_clean))
         # Also update README timestamp/matrix with current known package list from vendor dir
         try:
             # Build synthetic rows: read .done.json if present for version display
@@ -1349,6 +1352,10 @@ def main():
         _prune_unlisted_packages(vendor_root, desired_names)
     # Generate root package using only packages listed in config
     all_shell_include = _scan_vendor_for_shell(vendor_root, cfg, only=desired_names)
+    # Optional deep-clean pass after generation
+    if args.deep_clean:
+        step("Deep-cleaning vendored packages based on manifest declarations …")
+        _cleanup_vendor_tree(vendor_root, deep=True)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
     # Update README live matrix
     try:

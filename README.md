@@ -1,150 +1,125 @@
-# ExternalPackages – Advanced Guide
+# ExternalPackages – Vendor Tooling
 
-This repository vendors third‑party dependencies as Swift Packages into the `External/` folder and generates a single Swift package at the repository root (named `ExternalPackages`). It is designed to work entirely offline after the first run by converting remote binary targets to path‑based dependencies and by mirroring transitive package sources locally.
+This repository vendors third‑party Swift Packages into `External/` and generates a single root package named `ExternalPackages`. It supports offline builds by converting remote binaries to local `path:` targets and rewriting remote dependencies to local paths.
 
-## Overview
-- Converts remote `.binaryTarget(url: ...)` targets to local `path:` XCFrameworks.
-- Mirrors transitive SwiftPM dependencies locally and rewrites manifests to path‑based `package(path:)` entries.
-- Generates a single root package (`ExternalPackages`) that re‑exports modules you use, so your app can simply `import ExternalPackages`.
-- Supports authenticated and anonymous binary hosts (GitHub Releases, Artifactory/JFrog, S3 redirects, etc.).
-- Cleans vendored repositories by removing VCS/CI metadata: `.git`, `.github`, `.circleci`, `.gitignore`, `.swiftlint.yml`.
+## What It Does
+- Binary targets: Converts `.binaryTarget(url: ...)` to local `path:` XCFrameworks under `External/<Pkg>/Binaries`.
+- Localize deps: Rewrites `.package(url: ...)` entries in vendored manifests to local `package(path: ...)` where possible.
+- Root package: Generates a top‑level `Package.swift` that depends on all vendored packages you configured and re‑exports their modules.
+- Cleaning: Strips `.git`, CI configs, and stray archives from vendored trees; optional deep clean trims files not referenced by targets.
+
+## Requirements
+- macOS with Xcode toolchain and Python 3.
+- Network access for the first run when downloading/cloning packages and binary zips.
 
 ## Quick Start
-1. Adjust the configuration in `external_packages.json` (names, versions, products, exports).
-2. Run vendoring:
-   ```bash
-   python3 external_packages_builder.py --force
-   ```
-3. In Xcode, open the root `Package.swift` (package name: `ExternalPackages`) and build.
+- Configure `external_packages.json` with the packages you need (see schema below).
+- Generate or refresh vendors and root package:
+  - `python3 external_packages_builder.py`
+- Open the root `Package.swift` (package name `ExternalPackages`) in Xcode and build.
 
+## Commands
+- Vendoring/update: Processes packages in the config, converts binaries, rewrites manifests, and regenerates the root package.
+  - `python3 external_packages_builder.py`
+- Cleanup only: Cleans VCS/CI metadata and leftover `*.zip` archives; updates README matrix. No cloning/downloading.
+  - `python3 external_packages_builder.py --cleanup-only`
+- Prune removed: Deletes folders in `External/` that are not listed in the JSON; also updates root `Package.swift`.
+  - `python3 external_packages_builder.py --prune`
+- Deep clean: Trims vendored packages to only files referenced by their `Package.swift` (targets, resources, public headers).
+  - `python3 external_packages_builder.py --deep-clean`
+  - Combine with cleanup only:
+    - `python3 external_packages_builder.py --cleanup-only --deep-clean`
+- Process subset: Process only select packages by name (comma‑separated).
+  - `python3 external_packages_builder.py --package AEPAnalytics,Kingfisher`
+- Force reprocess: Ignore the “done” cache and redo work for matching packages.
+  - `python3 external_packages_builder.py --force`
+- Include unsupported: Process packages marked `"spmSupported": false`.
+  - `python3 external_packages_builder.py --include-unsupported`
+- Custom vendor dir or config path:
+  - `python3 external_packages_builder.py --vendor-dir External --config external_packages.json`
 
-### Cleanup Only
-Run the cleanup routine without recloning or downloading. This removes VCS/CI metadata and any leftover binary archives from `External/` and refreshes the README matrix.
+## JSON Configuration
 
-```bash
-python3 external_packages_builder.py --cleanup-only
+Top‑level fields
+- `shellPackageName`: Name for the root package generated at repository root.
+- `vendorDir`: Directory where packages are vendored (default `External`).
+- `packages`: Array of package entries (schema below).
+
+Per‑package fields
+- `name`: Folder name under `vendorDir` and identifier in the config.
+- `git`: Git URL of the package.
+- `currentVersion`: Observed/current version (informational).
+- `targetVersion`: Version or branch/tag to checkout (used for vendoring).
+- `spmSupported`: When false, the package is skipped unless `--include-unsupported` is used.
+- `products`: SwiftPM product names to add as dependencies in the root package. Empty list means vendored but not linked.
+- `exports`: Module names to re‑export from the root package. Defaults to `products` when omitted.
+- `packageName`: Optional override for the dependency package name used by SwiftPM if it differs from the folder name.
+- `postCloneCommands`: Array of shell commands executed inside the package folder after checkout.
+  - Placeholders: `{PKG_DIR}`, `{VENDOR_DIR}`, `{PKG_NAME}` are expanded.
+- `binaryHeaders` (or `headers`): Extra HTTP headers used when downloading binary zips (for protected hosts).
+- `xcframeworks`: Reserved for future use when pointing at pre‑fetched artifacts.
+- `notes`: Free‑form text for maintainers.
+
+Example package entry
+```json
+{
+  "name": "AppDynamicsAgent",
+  "git": "https://github.com/CiscoDevNet/AppDynamicsAgent.git",
+  "currentVersion": "2022.5.0",
+  "targetVersion": "2023.10.1",
+  "spmSupported": true,
+  "products": ["AppDynamicsAgent"],
+  "exports": ["AppDynamicsAgent"],
+  "postCloneCommands": [
+    "python3 -c \"p='Package.swift'; s=open(p).read(); s=s.replace('old','new'); open(p,'w').write(s)\""
+  ],
+  "binaryHeaders": {"Referer": "https://github.com/CiscoDevNet/AppDynamicsAgent"},
+  "notes": "SPM added in 23.10.x"
+}
 ```
 
+## Behavior Details
+- Binary conversion: For each vendored manifest’s `.binaryTarget(url: ...)`, a zip is downloaded, the `.xcframework` or `.artifactbundle` extracted into `External/<Pkg>/Binaries/<Target>/`, and the manifest is rewritten to `path:`.
+- Dependency localization: Any `.package(url: ...)` in vendored manifests is rewritten to `package(path: ...)` if the URL matches a package you vendored (normalized across `git@`/`https` forms).
+- Done registry: The tool uses `External/.packages_done.json` and per‑package `.done.json` to skip repeat work unless `--force` is given.
+- Re‑exports: The root package re‑exports modules listed in `exports` (or `products` if not specified). Names must be valid Swift identifiers to be re‑exported.
+- Cleaning: Always removes `.git`, `.github`, `.circleci`, `.gitignore`, `.swiftlint.yml`. Deep clean additionally trims files not referenced by targets/resources/public headers.
 
-## Useful Flags
-- `--force` – reprocesses packages even if they were previously completed.
-- `--package Name[,Name2]` – process only specific packages (fast iterative workflow).
-- `--include-unsupported` – include packages marked `spmSupported: false` in the config.
+## Common Workflows
+- Remove a package completely
+  - Edit `external_packages.json` and delete the package entry.
+  - Regenerate and prune: `python3 external_packages_builder.py --prune`
+  - Optional: Deep cleanup of the remaining vendors: `--deep-clean`.
+- Add or update a package
+  - Add/modify an entry with `git` and `targetVersion`.
+  - Run: `python3 external_packages_builder.py` (or `--force` to redo work).
+  - If the vendor has remote deps you already vendor, they are rewritten to local paths automatically.
 
 ## Authentication & Hosts
-Some hosts require specific headers or flows. The script auto‑detects many common cases and also honors optional per‑package `binaryHeaders` from the config.
+- GitHub: honors `GITHUB_TOKEN` / `GH_TOKEN`. For release asset URLs under `api.github.com`, uses `Accept: application/octet-stream`.
+- JFrog/Artifactory: supports API Key (`X-JFrog-Art-Api`), Bearer tokens, Basic auth; tries the Download API and Storage API to resolve direct downloads.
+- Custom headers: set per‑package `binaryHeaders` to inject arbitrary headers; `Referer` defaults to the package Git URL when available.
 
-- GitHub Releases API assets
-  - Accepts `GITHUB_TOKEN`/`GH_TOKEN` env for rate‑limit friendly downloads.
-  - Uses `Accept: application/octet-stream` for asset endpoints.
-- Artifactory / JFrog
-  - Anonymous downloads via the documented Download API:
-    - `GET /artifactory/api/download/{repoKey}/{path}?useRedirect=true`
-  - Storage API fallback to resolve `downloadUri` for direct download.
-  - Env‑based authentication (optional):
-    - `ARTIFACTORY_API_KEY` / `APPD_ARTIFACTORY_API_KEY`
-    - `ARTIFACTORY_ACCESS_TOKEN` / `APPD_ARTIFACTORY_ACCESS_TOKEN`
-    - `ARTIFACTORY_USER` + `ARTIFACTORY_PASSWORD` or `ARTIFACTORY_BASIC_AUTH`
-
-## Caching & Clean Builds
-- Xcode → File → Packages → Reset Package Caches.
-- Product → Clean Build Folder.
-- CLI:
-  ```bash
-  swift package reset && swift package resolve
-  ```
-- Delete `~/Library/Developer/Xcode/DerivedData/*/SourcePackages` if a stale artifact pops up.
-
-## Troubleshooting Tips
-- “No such module ‘X’” after converting binaries: reset caches so Xcode picks up the new path‑based manifest.
-- Slow clones: the script uses shallow fetches, tag‑first lookups, LFS smudge disabled, and cleans `.git` metadata after finishing.
-- Path vs product names: SwiftPM lets you depend on “products”, but you import “modules” (targets). The root package re‑exports the actual modules so `import ExternalPackages` works.
-
----
+## Caches & Build Hygiene
+- Xcode → File → Packages → Reset Package Caches; Product → Clean Build Folder.
+- CLI: `swift package reset && swift package resolve`.
+- Delete `~/Library/Developer/Xcode/DerivedData/*/SourcePackages` if stale.
 
 ## Vendored Packages – Live Matrix
 The table below is generated by the script after each run.
 
 <!-- BEGIN VENDOR MATRIX -->
-Last updated: `2025-08-29T13:58:19Z`
+Last updated: `N/A`
 
 | Package | Version | Size |
 |---|---|---:|
-| abseil-cpp-swiftpm | 0.20200225.4 | 7.5 MB |
-| AEPAnalytics | 4.0.0 | 601.0 KB |
-| AEPAssurance | 4.1.1 | 16.6 MB |
-| AEPCore | 4.2.4 | 4.0 MB |
-| AEPEdge | 4.3.1 | 30.6 MB |
-| AEPEdgeConsent | 4.0.0 | 286.2 KB |
-| AEPEdgeIdentity | 4.0.0 | 456.7 KB |
-| AEPRulesEngine | 4.0.0 | 89.4 KB |
-| AEPTarget | 4.0.3 | 1.0 MB |
-| Alamofire | 4.9.1 | 6.7 MB |
-| AlamofireNetworkActivityLogger | 3.4.0 |  |
-| AppDynamicsAgent | 2023.10.1 | 27.0 MB |
-| BigInt | 5.2.0 | 1.9 MB |
-| boringssl-swiftpm | 0.7.2 | 115.8 MB |
-| collectionconcurrencykit | 0.2.0 | 38.9 KB |
-| CryptoSwift | 1.4.1 | 781.8 KB |
-| DeviceKit | 5.5.0 | 359.1 KB |
-| DGCharts | 5.0.0 | 20.8 MB |
-| Firebase | 8.9.1 | 59.2 MB |
-| FloatingPanel | 2.8.1 | 6.9 MB |
-| googleappmeasurement | 8.9.1 | 64.2 MB |
-| GoogleDataTransport | 9.1.2 | 996.3 KB |
-| GoogleMaps | 8.3.1 | 84.8 MB |
-| GooglePlaces | 8.3.0 | 11.2 MB |
-| googleutilities | 7.13.3 | 774.5 KB |
-| grpc-swiftpm | 1.28.4 | 35.2 MB |
-| gtm-session-fetcher | 1.7.2 | 1.1 MB |
-| Insider | 1.4.1 | 4.6 MB |
-| IOSSecuritySuite | 2.0.2 | 221.8 KB |
-| iProov | 11.1.1 | 15.4 MB |
-| IQKeyboardManagerSwift | 6.3.0 | 4.2 MB |
-| ISPageControl | 0.1.0 | 15.9 MB |
-| KeychainAccess | 3.2.1 | 1.2 MB |
-| Kingfisher | 7.9.1 | 2.1 MB |
-| leveldb | 1.22.5 | 958.4 KB |
-| Lottie | 4.5.0 | 151.0 MB |
-| Mantis | 2.8.0 | 31.6 MB |
-| MEPSDK | 9.8.6 | 144.7 MB |
-| MGSwipeTableCell | 1.6.14 | 2.3 MB |
-| nanopb | 0.3.9.8 | 1.1 MB |
-| Promises | 2.0.0 | 625.1 KB |
-| RxDataSources | 5.0.0 | 386.0 KB |
-| RxKeyboard | 2.0.0 | 59.5 KB |
-| RxSwift | 6.6.0 | 11.2 MB |
-| RxSwiftExt | 6.2.1 | 11.5 MB |
-| SkeletonView | 1.30.1 | 3.1 MB |
-| sourcekitten | 0.33.1 | 11.7 MB |
-| SVProgressHUD | 2.3.1 | 353.8 KB |
-| swift-argument-parser | 1.2.3 | 1.4 MB |
-| swift-protobuf | 1.31.0 | 78.9 MB |
-| swift-syntax | HEAD | 9.5 MB |
-| SwiftLint | 0.50.1 | 2.8 MB |
-| swiftytexttable | 0.9.0 | 496.3 KB |
-| swxmlhash | 7.0.2 | 368.8 KB |
-| TensorFlowLiteC | 2.14.0 | 115.5 MB |
-| yams | 5.4.0 | 1.4 MB |
-| ZIPFoundation | 0.9.19 | 27.6 MB |
 <!-- END VENDOR MATRIX -->
 
-
-
-
-
-
-
-
-
-
-
----
-
-## Configuration Notes
-- To keep a package vendor‑only (vendored locally but not added to the aggregate target), set its `products` to an empty list in `external_packages.json`.
-- To customize which modules `ExternalPackages` re‑exports, provide an `exports` array for each package. When omitted, the values from `products` are used.
-- For packages that need post‑clone tweaks (e.g., move files, bump platform), add a `postCloneCommands` array with shell snippets. Commands run inside the package directory.
+## Notes
+- To keep a package vendor‑only (not linked by the root package), set its `products` to an empty list.
+- `exports` customizes re‑exports; omit to mirror `products`.
+- `postCloneCommands` run inside each vendored folder.
 
 ## License
 See individual package licenses in `External/<Package>/` and this repository’s license.
+

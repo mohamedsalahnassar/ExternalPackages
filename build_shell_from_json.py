@@ -30,7 +30,9 @@ CHKSUM_FIELD_RE = re.compile(r'checksum\s*:\s*"(?P<sum>[a-fA-F0-9]{64})"')
 PATH_FIELD_RE   = re.compile(r'path\s*:\s*"(?P<path>[^"]+)"')
 
 # For dependency URL patching
-PKG_DEP_URL_RE = re.compile(r"\.package\s*\(\s*url\s*:\s*\"([^\"]+)\"\s*,[^\)]*\)")
+# Match any .package(...) entry that contains a url: "..."
+# This is robust to the presence of other arguments like name:, and spans newlines.
+PKG_DEP_URL_RE = re.compile(r"\.package\s*\(\s*[^\)]*url\s*:\s*\"([^\"]+)\"[^\)]*\)", re.S)
 
 # ---------- Done registry ----------
 def _done_registry_path(vendor_dir):
@@ -256,19 +258,24 @@ def patch_manifest_deps_to_local(pkg_swift_path: str, pkg_dir: str, vendor_root:
     changed = False
     def repl(m):
         nonlocal changed
+        full = m.group(0)
         url = m.group(1)
         nurl = _normalize_git_url(url)
         rel = url_to_rel.get(nurl)
-        if rel:
-            changed = True
-            return f'.package(path: "{rel}")'
-        return m.group(0)
+        if not rel:
+            return full
+        # Preserve explicit dependency name label if present
+        name_m = re.search(r'name\s*:\s*"([^"]+)"', full)
+        name_part = f'name: "{name_m.group(1)}", ' if name_m else ''
+        changed = True
+        return f'.package({name_part}path: "{rel}")'
 
     new_txt = PKG_DEP_URL_RE.sub(repl, txt)
     if changed:
-        # Normalize accidental double-closing parentheses like ')).' after replacement
-        new_txt = re.sub(r"(\.package\s*\(\s*path\s*:\s*\"[^\"]+\"\s*\)\))", lambda m: m.group(1)[:-1], new_txt)
-        new_txt = re.sub(r"\.package\s*\(\s*path\s*:\s*\"([^\"]+)\"\s*\)\s*,\s*\)", r'.package(path: "\1")', new_txt)
+        # Normalize accidental double-closing parens introduced by replacing nested url entries
+        new_txt = re.sub(r'(\.package\s*\(\s*path\s*:\s*\"[^\"]+\"\s*\))\s*\)', r"\1", new_txt, flags=re.S)
+        # If a trailing '),\n' remains from the original entry, fold it into a single comma
+        new_txt = re.sub(r'(\.package\s*\([^)]*path\s*:\s*\"[^\"]+\"[^)]*\))\s*\),', r"\1,", new_txt, flags=re.S)
     if changed and new_txt != txt:
         pathlib.Path(pkg_swift_path).write_text(new_txt)
         info(f"Patched dependencies to local paths in {pkg_swift_path}")

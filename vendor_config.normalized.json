@@ -246,7 +246,10 @@
         "FloatingPanel"
       ],
       "xcframeworks": [],
-      "packageName": "FloatingPanel"
+      "packageName": "FloatingPanel",
+      "postCloneCommands": [
+        "python3 -c \"import re; p='Package.swift'; s=open(p).read(); s=re.sub(r'\\.iOS\\(\\.v(\\d+)\\)', lambda m: f'.iOS(.v{max(int(m.group(1)),13)})', s); open(p,'w').write(s)\""
+      ]
     },
     {
       "name": "googleappmeasurement",
@@ -280,7 +283,7 @@
         "GoogleMaps"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google’s SPM repo; upgrade required.",
+      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required.",
       "packageName": "GoogleMaps"
     },
     {
@@ -293,7 +296,7 @@
         "GooglePlaces"
       ],
       "xcframeworks": [],
-      "notes": "SPM distribution uses Google’s SPM repo; upgrade required.",
+      "notes": "SPM distribution uses Google\u2019s SPM repo; upgrade required.",
       "packageName": "GooglePlaces"
     },
     {

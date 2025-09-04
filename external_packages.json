@@ -442,26 +442,22 @@
       ]
     },
     {
-      "name": "mobile-sdk-ios",
+      "name": "Jumio",
       "currentVersion": "4.11.1",
       "spmSupported": true,
-      "targetVersion": "4.12.0",
+      "targetVersion": "4.11.0",
       "git": "https://github.com/Jumio/mobile-sdk-ios.git",
       "products": [
         "Jumio",
         "JumioIProov",
-        "JumioLiveness",
-        "JumioDefaultUI",
-        "JumioLocalization"
+        "JumioLiveness"
       ],
       "xcframeworks": [],
       "packageName": "Jumio",
       "exports": [
         "Jumio",
         "JumioIProov",
-        "JumioLiveness",
-        "JumioDefaultUI",
-        "JumioLocalization"
+        "JumioLiveness"
       ]
     },
     {

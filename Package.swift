@@ -34,13 +34,13 @@ let package = Package(
         .package(path: "External/iProov"),
         .package(path: "External/IQKeyboardManagerSwift"),
         .package(path: "External/ISPageControl"),
+        .package(path: "External/Jumio"),
         .package(path: "External/KeychainAccess"),
         .package(path: "External/Kingfisher"),
         .package(path: "External/Lottie"),
         .package(path: "External/Mantis"),
         .package(path: "External/MEPSDK"),
         .package(path: "External/MGSwipeTableCell"),
-        .package(path: "External/mobile-sdk-ios"),
         .package(path: "External/nanopb"),
         .package(path: "External/Promises"),
         .package(path: "External/RxDataSources"),
@@ -89,17 +89,15 @@ let package = Package(
                 .product(name: "iProov", package: "iProov"),
                 .product(name: "IQKeyboardManagerSwift", package: "IQKeyboardManagerSwift"),
                 .product(name: "ISPageControl", package: "ISPageControl"),
+                .product(name: "Jumio", package: "Jumio"),
+                .product(name: "JumioIProov", package: "Jumio"),
+                .product(name: "JumioLiveness", package: "Jumio"),
                 .product(name: "KeychainAccess", package: "KeychainAccess"),
                 .product(name: "Kingfisher", package: "Kingfisher"),
                 .product(name: "Lottie", package: "Lottie"),
                 .product(name: "Mantis", package: "Mantis"),
                 .product(name: "MEPSDK", package: "MEPSDK"),
                 .product(name: "MGSwipeTableCell", package: "MGSwipeTableCell"),
-                .product(name: "Jumio", package: "mobile-sdk-ios"),
-                .product(name: "JumioIProov", package: "mobile-sdk-ios"),
-                .product(name: "JumioLiveness", package: "mobile-sdk-ios"),
-                .product(name: "JumioDefaultUI", package: "mobile-sdk-ios"),
-                .product(name: "JumioLocalization", package: "mobile-sdk-ios"),
                 .product(name: "nanopb", package: "nanopb"),
                 .product(name: "Promises", package: "Promises"),
                 .product(name: "Differentiator", package: "RxDataSources"),
@@ -117,5 +115,6 @@ let package = Package(
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]
         )
-    ]
+    ],
+    cLanguageStandard: .c99
 )

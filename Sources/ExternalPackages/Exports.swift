@@ -32,10 +32,8 @@
 @_exported import InsiderMobile
 @_exported import InsiderMobileAdvancedNotification
 @_exported import Jumio
-@_exported import JumioDefaultUI
 @_exported import JumioIProov
 @_exported import JumioLiveness
-@_exported import JumioLocalization
 @_exported import KeychainAccess
 @_exported import Kingfisher
 @_exported import Lottie

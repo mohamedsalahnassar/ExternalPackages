@@ -1210,7 +1210,8 @@ let package = Package(
 {chr(10).join(prod_lines)}
             ]
         )
-    ]
+    ],
+    cLanguageStandard: .c99
 )
 """
 

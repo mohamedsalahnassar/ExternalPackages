@@ -29,6 +29,57 @@ URL_FIELD_RE    = re.compile(r'url\s*:\s*"(?P<url>[^"]+)"')
 CHKSUM_FIELD_RE = re.compile(r'checksum\s*:\s*"(?P<sum>[a-fA-F0-9]{64})"')
 PATH_FIELD_RE   = re.compile(r'path\s*:\s*"(?P<path>[^"]+)"')
 
+def _iter_binary_target_segments(txt: str):
+    """Yield (name, start, end, body_text) for each .binaryTarget(...) call.
+    This parser tracks parentheses and string literals to avoid being confused
+    by characters like ')' inside URL strings (e.g., "\(version)").
+    """
+    results = []
+    if not txt:
+        return results
+    i = 0
+    L = len(txt)
+    while True:
+        j = txt.find('.binaryTarget', i)
+        if j < 0:
+            break
+        # find opening '('
+        k = txt.find('(', j)
+        if k < 0:
+            i = j + 1
+            continue
+        # walk to matching ')'
+        depth = 0
+        in_str = False
+        esc = False
+        end = k
+        for p in range(k, L):
+            ch = txt[p]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == '\\':
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+            else:
+                if ch == '"':
+                    in_str = True
+                elif ch == '(':
+                    depth += 1
+                elif ch == ')':
+                    depth -= 1
+                    if depth == 0:
+                        end = p + 1
+                        break
+        seg = txt[j:end]
+        body = txt[k+1:end-1] if end > k+1 else ''
+        nm = re.search(r'name\s*:\s*"([^"]+)"', body)
+        name = nm.group(1) if nm else None
+        results.append((name, j, end, body))
+        i = end
+    return results
+
 # For dependency URL patching
 # Match any .package(...) entry that contains a url: "..."
 # This is robust to the presence of other arguments like name:, and spans newlines.
@@ -196,11 +247,46 @@ def checkout_repo(dest_dir, git_url, version):
     return False, f"checkout failed ({version})"
 
 # ---------- Package.swift parsing ----------
+def _resolve_manifest_url_interpolations(pkg_swift_text: str) -> str:
+    """Resolve simple string interpolations inside URL literals.
+    Looks for constant string definitions like:
+      let version = "4.12.0"
+      static let foo = "bar"
+    and replaces occurrences of \(version) or \(foo) inside
+    url: "..." string literals only. This is a heuristic to support
+    manifests that build binaryTarget URLs using simple constants.
+    """
+    try:
+        txt = pkg_swift_text or ""
+        # Collect simple const string defs
+        consts: Dict[str, str] = {}
+        CONST_RE = re.compile(r"(?m)^(?:\s*(?:public|internal|private)\s+)?(?:\s*static\s+)?\s*let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"([^\"]*)\"")
+        for m in CONST_RE.finditer(txt):
+            consts[m.group(1)] = m.group(2)
+
+        if not consts:
+            return txt
+
+        # Replace only inside url: "..." literals
+        def url_repl(m):
+            content = m.group("url")
+            # Replace simple interpolations "\(ident)" with constant values
+            content2 = content
+            for k, v in consts.items():
+                token = f"\\({k})"
+                content2 = content2.replace(token, v)
+            return f"url: \"{content2}\""
+
+        new_txt = re.sub(r'url\s*:\s*\"(?P<url>[^\"]+)\"', url_repl, txt)
+        return new_txt
+    except Exception:
+        return pkg_swift_text
+
 def find_binary_targets(pkg_swift_text: str):
     results = []
-    for m in BIN_RE.finditer(pkg_swift_text or ""):
-        name = m.group("name")
-        body = m.group("body") or ""
+    for name, _s, _e, body in _iter_binary_target_segments(pkg_swift_text or ""):
+        if not name:
+            continue
         url_m = URL_FIELD_RE.search(body)
         sum_m = CHKSUM_FIELD_RE.search(body)
         path_m = PATH_FIELD_RE.search(body)
@@ -213,20 +299,28 @@ def find_binary_targets(pkg_swift_text: str):
     return results
 
 def patch_manifest_to_path(pkg_swift_path: str, target_name: str, rel_path: str):
-    txt = pathlib.Path(pkg_swift_path).read_text()
-    def repl(m):
-        body = m.group("body")
-        body = re.sub(r'url\s*:\s*"[^"]+"', f'path: "{rel_path}"', body)
-        body = re.sub(r'checksum\s*:\s*"[a-fA-F0-9]{64}"', '', body)
-        # Ensure only one of url/path exists (prefer path)
-        body = re.sub(r'\s*,\s*,', ',', body)
-        # Remove trailing comma before closing of binaryTarget argument list if present
-        body = re.sub(r',\s*$', '', body.strip())
-        return f'.binaryTarget(name: "{target_name}", {body})'
-    new = BIN_RE.sub(lambda m: repl(m) if m.group("name")==target_name else m.group(0), txt)
-    # Also normalize any accidental trailing commas right before a closing parenthesis
-    new = re.sub(r'(\.binaryTarget\([^\)]*?)\,\s*\)', r'\1)', new, flags=re.S)
-    pathlib.Path(pkg_swift_path).write_text(new)
+    """Rewrite a specific .binaryTarget to use path: and drop checksum, robust to \(version) etc."""
+    p = pathlib.Path(pkg_swift_path)
+    txt = p.read_text()
+    segments = _iter_binary_target_segments(txt)
+    if not segments:
+        return
+    for name, s, e, body in segments:
+        if name != target_name:
+            continue
+        seg = txt[s:e]
+        # Replace url: "..." with path: "rel_path"
+        seg2 = re.sub(r'url\s*:\s*"[^\"]+"', f'path: "{rel_path}"', seg)
+        # Remove checksum field (and trailing comma if any)
+        seg2 = re.sub(r'\s*,?\s*checksum\s*:\s*"[a-fA-F0-9]{64}"', '', seg2)
+        # Normalize potential double commas
+        seg2 = re.sub(r',\s*,', ',', seg2)
+        # Write back
+        txt = txt[:s] + seg2 + txt[e:]
+        break
+    # Normalize stray commas before close paren
+    txt = re.sub(r'(\.binaryTarget\([\s\S]*?)\,\s*\)', r'\1)', txt, flags=re.S)
+    p.write_text(txt)
 
 def _normalize_git_url(u: str) -> str:
     try:
@@ -242,13 +336,21 @@ def _normalize_git_url(u: str) -> str:
         return (u or '').lower()
 
 def patch_manifest_deps_to_local(pkg_swift_path: str, pkg_dir: str, vendor_root: str, cfg: Dict):
-    """Replace remote .package(url: ...) deps with path-based ones if the URL matches a vendored package."""
+    """Replace remote .package(url: ...) deps with path-based ones when possible.
+    Matching strategy:
+    - Prefer explicit dependency label: .package(name: "X", url: ...)
+      If a vendored package exists whose config name or packageName is X, map to it.
+    - Else, match by normalized URL using cfg.git → vendor path mapping (existing behavior).
+    - As a fallback, try matching by folder name present under vendor_root.
+    """
     try:
         txt = pathlib.Path(pkg_swift_path).read_text()
     except Exception:
         return
     # Build lookup from normalized git url -> local relative path
     url_to_rel: Dict[str, str] = {}
+    # Build lookup from declared name -> local relative path
+    name_to_rel: Dict[str, str] = {}
     for e in (cfg.get('packages') or []):
         git = e.get('git') or ''
         name = e.get('name') or ''
@@ -258,28 +360,47 @@ def patch_manifest_deps_to_local(pkg_swift_path: str, pkg_dir: str, vendor_root:
         local_abs = os.path.join(vendor_root, name)
         rel = os.path.relpath(local_abs, start=os.path.dirname(pkg_swift_path))
         url_to_rel[nurl] = rel
+        # Map both folder name and optional packageName to the same path
+        name_to_rel[name] = rel
+        pkg_name = (e.get('packageName') or '').strip()
+        if pkg_name:
+            name_to_rel[pkg_name] = rel
+
+    # Also include any existing vendor folder names to be extra helpful
+    try:
+        for entry in os.listdir(vendor_root):
+            abs_p = os.path.join(vendor_root, entry)
+            if os.path.isdir(abs_p):
+                rel = os.path.relpath(abs_p, start=os.path.dirname(pkg_swift_path))
+                name_to_rel.setdefault(entry, rel)
+    except Exception:
+        pass
 
     changed = False
     def repl(m):
         nonlocal changed
         full = m.group(0)
         url = m.group(1)
-        nurl = _normalize_git_url(url)
-        rel = url_to_rel.get(nurl)
+        # Prefer mapping via explicit name label when available
+        name_m = re.search(r'name\s*:\s*"([^"]+)"', full)
+        rel = None
+        if name_m:
+            dep_name = name_m.group(1)
+            rel = name_to_rel.get(dep_name)
+        if not rel:
+            nurl = _normalize_git_url(url)
+            rel = url_to_rel.get(nurl)
         if not rel:
             return full
-        # Preserve explicit dependency name label if present
-        name_m = re.search(r'name\s*:\s*"([^"]+)"', full)
         name_part = f'name: "{name_m.group(1)}", ' if name_m else ''
         changed = True
         return f'.package({name_part}path: "{rel}")'
 
     new_txt = PKG_DEP_URL_RE.sub(repl, txt)
     if changed:
-        # Normalize accidental double-closing parens introduced by replacing nested url entries
-        new_txt = re.sub(r'(\.package\s*\(\s*path\s*:\s*\"[^\"]+\"\s*\))\s*\)', r"\1", new_txt, flags=re.S)
-        # If a trailing '),\n' remains from the original entry, fold it into a single comma
-        new_txt = re.sub(r'(\.package\s*\([^)]*path\s*:\s*\"[^\"]+\"[^)]*\))\s*\),', r"\1,", new_txt, flags=re.S)
+        # Normalize accidental extra closing parens after replaced package entries
+        new_txt = re.sub(r'(\.package\s*\([^)]*\))\s*\),', r"\1,", new_txt, flags=re.S)
+        new_txt = re.sub(r'(\.package\s*\([^)]*\))\s*\)', r"\1", new_txt, flags=re.S)
     if changed and new_txt != txt:
         pathlib.Path(pkg_swift_path).write_text(new_txt)
         info(f"Patched dependencies to local paths in {pkg_swift_path}")
@@ -896,15 +1017,15 @@ def _prune_unlisted_packages(vendor_root: pathlib.Path, keep: Set[str]):
             except Exception as e:
                 warn(f"Could not prune {entry.name}: {e}")
 
-def _cleanup_all_git(vendor_root: pathlib.Path):
-    """Remove all .git directories under vendor_root."""
-    if not vendor_root.exists():
+def _cleanup_all_git(vendor_root: pathlib.Path, strip_vcs: bool = True):
+    """Remove all .git/CI metadata under vendor_root if strip_vcs is True."""
+    if not vendor_root.exists() or not strip_vcs:
         return
     for entry in vendor_root.iterdir():
         if entry.is_dir():
             remove_git_dir(str(entry))
 
-def _cleanup_vendor_tree(vendor_root: pathlib.Path, only: Optional[Set[str]] = None, deep: bool = False):
+def _cleanup_vendor_tree(vendor_root: pathlib.Path, only: Optional[Set[str]] = None, deep: bool = False, strip_vcs: bool = True, dry_run: bool = False):
     """Run all cleanup actions against the vendored tree without recloning.
     - Remove VCS/CI metadata (.git, .github, .circleci) and housekeeping files (.gitignore, .swiftlint.yml).
     - Remove any leftover binary archives under Binaries/*.zip.
@@ -918,19 +1039,23 @@ def _cleanup_vendor_tree(vendor_root: pathlib.Path, only: Optional[Set[str]] = N
             continue
         if only and entry.name not in only:
             continue
-        remove_git_dir(str(entry))
+        if strip_vcs:
+            remove_git_dir(str(entry))
         # Prune binary zip archives
         bins = entry / "Binaries"
         if bins.is_dir():
             for z in bins.glob("*.zip"):
                 try:
-                    z.unlink()
-                    dim(f"Removed archive → {z}")
+                    if dry_run:
+                        dim(f"[dry-run] Would remove archive → {z}")
+                    else:
+                        z.unlink()
+                        dim(f"Removed archive → {z}")
                 except Exception as e:
                     warn(f"Could not remove {z}: {e}")
         if deep:
             try:
-                _cleanup_deep_package(entry)
+                _cleanup_deep_package(entry, dry_run=dry_run)
             except Exception as e:
                 warn(f"Deep cleanup failed for {entry.name}: {e}")
 
@@ -941,7 +1066,7 @@ RES_RE = re.compile(r"\.(?:process|copy)\(\s*\"([^\"]+)\"\s*\)")
 PUB_HDR_RE = re.compile(r"publicHeadersPath\s*:\s*\"([^\"]+)\"")
 BIN_TGT_RE = re.compile(r"\.binaryTarget\s*\(\s*name\s*:\s*\"([^\"]+)\"\s*,\s*path\s*:\s*\"([^\"]+)\"", re.S)
 
-def _cleanup_deep_package(pkg_dir: pathlib.Path):
+def _cleanup_deep_package(pkg_dir: pathlib.Path, dry_run: bool = False):
     """Remove files not required by Package.swift to build.
     Keeps: Package.swift, target source paths, binary targets (Binaries/*), and declared resources/public headers.
     Removes tests, examples, docs and unrelated files.
@@ -1007,11 +1132,14 @@ def _cleanup_deep_package(pkg_dir: pathlib.Path):
             remove_candidates.append(item)
     for c in remove_candidates:
         try:
-            if c.is_dir():
-                shutil.rmtree(c)
+            if dry_run:
+                dim(f"[dry-run] Would deep clean → {c}")
             else:
-                c.unlink()
-            dim(f"Deep cleaned → {c}")
+                if c.is_dir():
+                    shutil.rmtree(c)
+                else:
+                    c.unlink()
+                dim(f"Deep cleaned → {c}")
         except Exception as e:
             warn(f"Could not remove {c}: {e}")
 
@@ -1131,6 +1259,8 @@ def main():
     ap.add_argument("--deep-clean", dest="deep_clean", action="store_true", help="Enable deep cleanup: trim files not referenced by Package.swift targets/resources")
     # Backward-compat shorthand
     ap.add_argument("--deepclean", dest="deep_clean", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--keep-vcs", action="store_true", help="Do not remove .git/.github/.circleci or housekeeping files during cleanup")
+    ap.add_argument("--dry-run-cleanup", dest="dry_run_cleanup", action="store_true", help="Show what cleanup would remove without deleting")
     ap.add_argument("--prune", action="store_true", help="Delete vendor folders not present in the config")
     args = ap.parse_args()
     # Config path
@@ -1143,7 +1273,12 @@ def main():
     # Cleanup-only mode
     if args.cleanup_only:
         step(f"Running cleanup-only in {vendor_root} …")
-        _cleanup_vendor_tree(vendor_root, deep=bool(args.deep_clean))
+        _cleanup_vendor_tree(
+            vendor_root,
+            deep=bool(args.deep_clean),
+            strip_vcs=not args.keep_vcs,
+            dry_run=bool(args.dry_run_cleanup)
+        )
         # Also update README timestamp/matrix with current known package list from vendor dir
         try:
             # Build synthetic rows: read .done.json if present for version display
@@ -1261,8 +1396,10 @@ def main():
         except Exception as e:
             warn(f"Could not patch manifest deps for {name}: {e}")
         pkg_swift = pkg_swift_path.read_text()
+        # Pre-resolve simple string interpolations in url: "..." values (e.g., \(version))
+        pkg_swift_resolved = _resolve_manifest_url_interpolations(pkg_swift)
 
-        bins = find_binary_targets(pkg_swift)
+        bins = find_binary_targets(pkg_swift_resolved)
         bins_dir = pkg_dir / "Binaries"
         ensure_dir(bins_dir)
 
@@ -1328,7 +1465,7 @@ def main():
     print_table(rows_for_print)
     # Always regenerate root package by scanning all vendored packages with manifests
     # Also clean .git folders across vendor tree to ensure vendored copies are source-only
-    _cleanup_all_git(vendor_root)
+    _cleanup_all_git(vendor_root, strip_vcs=not args.keep_vcs)
     # Determine desired package names from config
     desired_names: Set[str] = { (e.get("name") or "").strip() for e in (cfg.get("packages") or []) if (e.get("name") or "").strip() }
     # Optionally prune directories not present in config
@@ -1340,7 +1477,7 @@ def main():
     # Optional deep-clean pass after generation
     if args.deep_clean:
         step("Deep-cleaning vendored packages based on manifest declarations …")
-        _cleanup_vendor_tree(vendor_root, deep=True)
+        _cleanup_vendor_tree(vendor_root, deep=True, strip_vcs=not args.keep_vcs)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
     # Update README live matrix
     try:

@@ -442,6 +442,29 @@
       ]
     },
     {
+      "name": "mobile-sdk-ios",
+      "currentVersion": "4.11.1",
+      "spmSupported": true,
+      "targetVersion": "4.12.0",
+      "git": "https://github.com/Jumio/mobile-sdk-ios.git",
+      "products": [
+        "Jumio",
+        "JumioIProov",
+        "JumioLiveness",
+        "JumioDefaultUI",
+        "JumioLocalization"
+      ],
+      "xcframeworks": [],
+      "packageName": "Jumio",
+      "exports": [
+        "Jumio",
+        "JumioIProov",
+        "JumioLiveness",
+        "JumioDefaultUI",
+        "JumioLocalization"
+      ]
+    },
+    {
       "name": "IQKeyboardManagerSwift",
       "currentVersion": "6.3.0",
       "spmSupported": true,

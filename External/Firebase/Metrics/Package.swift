@@ -21,7 +21,7 @@ import PackageDescription
 let package = Package(
   name: "Metrics",
   dependencies: [
-    .package(url: "https://github.com/objecthub/swift-commandlinekit", from: "0.2.5"),
+    .package(path: "../../swift-commandlinekit"),
   ],
   targets: [
     .target(

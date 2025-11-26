@@ -40,7 +40,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser", from: "0.2.0"),
+    .package(path: "../../../../swift-argument-parser"),
   ],
   targets: [
     .target(

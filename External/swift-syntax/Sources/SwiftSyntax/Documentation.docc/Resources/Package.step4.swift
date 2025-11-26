@@ -14,7 +14,7 @@ let package = Package(
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", branch: "main")
+    .package(path: "../swift-syntax")
   ],
   targets: [
     // Targets are the basic building blocks of a package, defining a module or a test suite.

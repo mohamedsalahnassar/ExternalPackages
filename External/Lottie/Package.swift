@@ -7,7 +7,7 @@ let package = Package(
   platforms: [.iOS("13.0"), .macOS("10.15"), .tvOS("13.0"), .custom("visionOS", versionString: "1.0")],
   products: [.library(name: "Lottie", targets: ["Lottie"])],
   dependencies: [
-    .package(url: "https://github.com/airbnb/swift", .upToNextMajor(from: "1.0.1")),
+    // Dependencies are vendored locally; no remote packages are required.
   ],
   targets: [
     .target(

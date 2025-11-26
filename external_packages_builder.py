@@ -3,6 +3,7 @@
 
 import os, sys, json, re, shutil, subprocess, urllib.request, urllib.error, zipfile, tempfile, uuid, hashlib, argparse, pathlib
 import base64
+import getpass
 from urllib.parse import urlparse
 from typing import List, Dict, Tuple, Optional, Set
 
@@ -1243,6 +1244,220 @@ let package = Package(
 
     good(f"Root package generated → {pkg_root / 'Package.swift'}")
 
+
+# ---------- XCFramework packaging and publishing ----------
+def _parse_root_manifest_packages(manifest_path: str) -> List[Tuple[str, str]]:
+    """Return (name, relative_path) for each local package dependency in the root manifest."""
+    if not os.path.exists(manifest_path):
+        warn(f"Manifest not found: {manifest_path}")
+        return []
+    txt = pathlib.Path(manifest_path).read_text()
+    pkgs: List[Tuple[str, str]] = []
+    for m in re.finditer(r"\.package\s*\(\s*path\s*:\s*\"([^\"]+)\"\s*\)", txt):
+        rel_path = m.group(1)
+        name = os.path.basename(rel_path.rstrip("/")) or rel_path
+        pkgs.append((name, rel_path))
+    return pkgs
+
+
+def _dump_package_products(pkg_path: str) -> List[str]:
+    """Return the list of library products defined by a package using `swift package dump-package`."""
+    try:
+        out = subprocess.check_output([
+            "swift", "package", "--package-path", pkg_path, "dump-package"
+        ], text=True)
+        obj = json.loads(out)
+    except Exception as e:
+        warn(f"Failed to inspect package at {pkg_path}: {e}")
+        return []
+    products: List[str] = []
+    for p in obj.get("products", []):
+        nm = p.get("name")
+        ptype = p.get("type")
+        if not nm or not isinstance(ptype, dict):
+            continue
+        if "library" in ptype:
+            products.append(nm)
+    return products
+
+
+def _build_single_product_xcframework(pkg_path: str, product: str, out_dir: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """Build a single product into an .xcframework and return (ok, xcframework_path, error)."""
+    derived = tempfile.mkdtemp(prefix=f"dd_{product}_")
+    try:
+        device_cmd = [
+            "xcodebuild", "-scheme", product, "-configuration", "Release",
+            "-destination", "generic/platform=iOS", "-sdk", "iphoneos",
+            "-derivedDataPath", derived, "build"
+        ]
+        sim_cmd = [
+            "xcodebuild", "-scheme", product, "-configuration", "Release",
+            "-destination", "generic/platform=iOS Simulator", "-sdk", "iphonesimulator",
+            "-derivedDataPath", derived, "build"
+        ]
+        run(device_cmd, cwd=pkg_path)
+        run(sim_cmd, cwd=pkg_path)
+        dev_fw = os.path.join(derived, "Build", "Products", "Release-iphoneos", f"{product}.framework")
+        sim_fw = os.path.join(derived, "Build", "Products", "Release-iphonesimulator", f"{product}.framework")
+        if not (os.path.exists(dev_fw) and os.path.exists(sim_fw)):
+            return False, None, f"Frameworks not found for {product}"
+        ensure_dir(out_dir)
+        xc_path = os.path.join(out_dir, f"{product}.xcframework")
+        if os.path.exists(xc_path):
+            shutil.rmtree(xc_path, ignore_errors=True)
+        create_cmd = [
+            "xcodebuild", "-create-xcframework",
+            "-framework", dev_fw,
+            "-framework", sim_fw,
+            "-output", xc_path
+        ]
+        run(create_cmd)
+        return True, xc_path, None
+    except subprocess.CalledProcessError as e:
+        return False, None, str(e)
+    finally:
+        shutil.rmtree(derived, ignore_errors=True)
+
+
+def _zip_xcframework(xcframework_path: str, out_dir: str) -> str:
+    base = os.path.basename(xcframework_path.rstrip(os.sep))
+    zip_base = os.path.join(out_dir, base)
+    if os.path.exists(f"{zip_base}.zip"):
+        os.remove(f"{zip_base}.zip")
+    return shutil.make_archive(zip_base, "zip", root_dir=os.path.dirname(xcframework_path), base_dir=base)
+
+
+def _compute_checksum(zip_path: str) -> Tuple[Optional[str], Optional[str]]:
+    try:
+        out = subprocess.check_output(["swift", "package", "compute-checksum", zip_path], text=True)
+        return out.strip(), None
+    except subprocess.CalledProcessError as e:
+        return None, str(e)
+
+
+def _upload_archives_to_nexus(entries: List[Dict], base_url: str, rel_path: str, username: str, password: str):
+    base_url = base_url.rstrip("/")
+    rel_path = rel_path.strip("/")
+    for e in entries:
+        zip_path = e.get("zip")
+        pkg = e.get("package")
+        version = e.get("version") or "latest"
+        if not zip_path or not os.path.isfile(zip_path):
+            continue
+        url = f"{base_url}/{rel_path}/{pkg}/{version}/{os.path.basename(zip_path)}"
+        cmd = [
+            "curl", "-k", "-u", f"{username}:{password}",
+            "--upload-file", zip_path, url
+        ]
+        try:
+            run(cmd)
+            e["url"] = url
+            good(f"Uploaded {zip_path} → {url}")
+        except subprocess.CalledProcessError as e_run:
+            bad(f"Upload failed for {zip_path}: {e_run}")
+
+
+def _rewrite_root_manifest_with_binaries(manifest_path: str, entries: List[Dict]):
+    if not entries:
+        warn("No binary entries to write to manifest")
+        return
+    manifest = pathlib.Path(manifest_path)
+    if not manifest.exists():
+        warn(f"Cannot update missing manifest: {manifest_path}")
+        return
+    txt = manifest.read_text()
+    pkg_name = re.search(r'name\s*:\s*\"([^\"]+)\"', txt)
+    pkg_name = pkg_name.group(1) if pkg_name else "ExternalPackages"
+    platforms_match = re.search(r'platforms\s*:\s*\[(.*?)\]', txt, re.S)
+    platforms_txt = platforms_match.group(1).strip() if platforms_match else ".iOS(.v15)"
+    clang_match = re.search(r'cLanguageStandard\s*:\s*([^,)]+)', txt)
+    clang_txt = clang_match.group(1).strip() if clang_match else ".c99"
+    binary_lines = []
+    dep_lines = []
+    for e in entries:
+        prod = e.get("product")
+        url = e.get("url")
+        checksum = e.get("checksum")
+        if not (prod and url and checksum):
+            continue
+        binary_lines.append(f'        .binaryTarget(name: "{prod}", url: "{url}", checksum: "{checksum}")')
+        dep_lines.append(f'                "{prod}",')
+    if not binary_lines:
+        warn("No complete binary entries with URLs and checksums to write")
+        return
+    binary_block = "\n".join(binary_lines)
+    dep_block = "\n".join(dep_lines)
+    new_txt = f"""// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: \"{pkg_name}\",
+    platforms: [
+        {platforms_txt}
+    ],
+    products: [
+        .library(name: \"{pkg_name}\", targets: [\"{pkg_name}\"])
+    ],
+    dependencies: [],
+    targets: [
+{binary_block},
+        .target(
+            name: \"{pkg_name}\",
+            dependencies: [
+{dep_block}
+            ]
+        )
+    ],
+    cLanguageStandard: {clang_txt}
+)
+"""
+    manifest.write_text(new_txt)
+    good(f"Updated manifest to reference binary targets → {manifest}")
+
+
+def _build_and_package_root_dependencies(manifest_path: str, cfg: Dict, out_dir: str, upload: bool = False) -> List[Dict]:
+    packages = _parse_root_manifest_packages(manifest_path)
+    if not packages:
+        warn("No local dependencies found in root manifest")
+        return []
+    ensure_dir(out_dir)
+    version_lookup = {p.get("name"): p.get("targetVersion") or p.get("currentVersion") for p in (cfg.get("packages") or [])}
+    results: List[Dict] = []
+    for pkg_name, rel_path in packages:
+        pkg_dir = pathlib.Path(rel_path)
+        if not pkg_dir.exists():
+            warn(f"Skipping missing package path: {rel_path}")
+            continue
+        products = _dump_package_products(str(pkg_dir))
+        if not products:
+            warn(f"No library products discovered for {pkg_name}")
+            continue
+        for prod in products:
+            ok, xc_path, err = _build_single_product_xcframework(str(pkg_dir), prod, out_dir)
+            if not ok or not xc_path:
+                bad(f"Failed to build xcframework for {prod}: {err}")
+                continue
+            zip_path = _zip_xcframework(xc_path, out_dir)
+            checksum, cerr = _compute_checksum(zip_path)
+            if cerr:
+                warn(f"Checksum failed for {zip_path}: {cerr}")
+            results.append({
+                "package": pkg_name,
+                "product": prod,
+                "zip": zip_path,
+                "checksum": checksum,
+                "version": version_lookup.get(pkg_name)
+            })
+            good(f"Packaged {prod} → {zip_path}")
+    if upload and results:
+        base_url = input("Nexus base URL (e.g., https://engnexus.enbduat.com): ").strip()
+        rel_path = input("Relative upload path (e.g., repository/mobileapps-raw-hosted-eng/SPNs): ").strip()
+        username = input("Nexus username: ").strip()
+        password = getpass.getpass("Nexus password: ")
+        _upload_archives_to_nexus(results, base_url, rel_path, username, password)
+    return results
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config_pos", nargs="?", help="Path to external_packages.json")
@@ -1263,6 +1478,9 @@ def main():
     ap.add_argument("--keep-vcs", action="store_true", help="Do not remove .git/.github/.circleci or housekeeping files during cleanup")
     ap.add_argument("--dry-run-cleanup", dest="dry_run_cleanup", action="store_true", help="Show what cleanup would remove without deleting")
     ap.add_argument("--prune", action="store_true", help="Delete vendor folders not present in the config")
+    ap.add_argument("--build-xcframeworks", action="store_true", help="Compile root manifest dependencies into zipped .xcframework archives")
+    ap.add_argument("--xcframeworks-dir", default="XCFrameworks", help="Directory where built .xcframework.zip files are written")
+    ap.add_argument("--upload-xcframeworks", action="store_true", help="Upload built .xcframework archives to Nexus and update the manifest")
     args = ap.parse_args()
     # Config path
     config_path = args.config or args.config_pos or "external_packages.json"
@@ -1480,6 +1698,14 @@ def main():
         step("Deep-cleaning vendored packages based on manifest declarations …")
         _cleanup_vendor_tree(vendor_root, deep=True, strip_vcs=not args.keep_vcs)
     _generate_shell_package(cfg, all_shell_include, str(vendor_root))
+    binary_entries: List[Dict] = []
+    if args.build_xcframeworks:
+        step("Building xcframeworks for root manifest dependencies …")
+        binary_entries = _build_and_package_root_dependencies(
+            "Package.swift", cfg, args.xcframeworks_dir, upload=bool(args.upload_xcframeworks)
+        )
+        if args.upload_xcframeworks:
+            _rewrite_root_manifest_with_binaries("Package.swift", binary_entries)
     # Update README live matrix
     try:
         update_readme_with_matrix(rows_for_print, str(vendor_root))

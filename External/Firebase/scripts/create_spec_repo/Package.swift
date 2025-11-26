@@ -24,7 +24,7 @@ let package = Package(
     .executable(name: "spec-repo-builder", targets: ["SpecRepoBuilder"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.0")),
+    .package(path: "../../../swift-argument-parser"),
   ],
   targets: [
     .target(

@@ -1,11 +1,8 @@
 // swift-tools-version:4.0
 import PackageDescription
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(visionOS) || os(watchOS)
+// All dependencies are vendored locally; no remote package references are required.
 let dependencies: [Package.Dependency] = []
-#else
-let dependencies: [Package.Dependency] = [.package(url: "https://github.com/IBM-Swift/CZlib.git", .exact("0.1.2"))]
-#endif
 
 let package = Package(
     name: "ZIPFoundation",

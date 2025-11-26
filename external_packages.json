@@ -740,6 +740,21 @@
       ]
     },
     {
+      "name": "swift-commandlinekit",
+      "currentVersion": "0.2.5",
+      "spmSupported": true,
+      "targetVersion": "0.2.5",
+      "git": "https://github.com/objecthub/swift-commandlinekit",
+      "products": [
+        "CommandLineKit"
+      ],
+      "xcframeworks": [],
+      "packageName": "CommandLineKit",
+      "exports": [
+        "CommandLineKit"
+      ]
+    },
+    {
       "name": "swift-argument-parser",
       "currentVersion": "1.2.3",
       "spmSupported": true,

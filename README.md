@@ -31,6 +31,10 @@ This repository vendors third‑party Swift Packages into `External/` and genera
     - `python3 external_packages_builder.py --cleanup-only --deep-clean`
 - Process subset: Process only select packages by name (comma‑separated).
   - `python3 external_packages_builder.py --package AEPAnalytics,Kingfisher`
+- Build xcframeworks: Compile each root manifest dependency into `.xcframework.zip` archives under a chosen folder.
+  - `python3 external_packages_builder.py --build-xcframeworks --xcframeworks-dir XCFrameworks`
+- Build & upload xcframeworks: Build, prompt for Nexus credentials/paths, upload archives, and rewrite the root `Package.swift` to binary targets.
+  - `python3 external_packages_builder.py --build-xcframeworks --upload-xcframeworks --xcframeworks-dir XCFrameworks`
 - Force reprocess: Ignore the “done” cache and redo work for matching packages.
   - `python3 external_packages_builder.py --force`
 - Include unsupported: Process packages marked `"spmSupported": false`.
@@ -84,6 +88,19 @@ Example package entry
 - Done registry: The tool uses `External/.packages_done.json` and per‑package `.done.json` to skip repeat work unless `--force` is given.
 - Re‑exports: The root package re‑exports modules listed in `exports` (or `products` if not specified). Names must be valid Swift identifiers to be re‑exported.
 - Cleaning: Always removes `.git`, `.github`, `.circleci`, `.gitignore`, `.swiftlint.yml`. Deep clean additionally trims files not referenced by targets/resources/public headers.
+
+## XCFramework packaging & Nexus upload
+- Build archives only
+  - `python3 external_packages_builder.py --build-xcframeworks --xcframeworks-dir XCFrameworks`
+  - Generates one zip per library product for each local dependency in the root `Package.swift` and prints SHA-256 checksums.
+- Build, upload, and rewrite the manifest
+  - `python3 external_packages_builder.py --build-xcframeworks --upload-xcframeworks --xcframeworks-dir XCFrameworks`
+  - The script will prompt for:
+    - Nexus base URL (e.g., `https://engnexus.enbduat.com`)
+    - Relative upload path (e.g., `repository/mobileapps-raw-hosted-eng/SPNs`)
+    - Username and password
+  - Each archive is uploaded using `curl -k -u "<user>:<pass>" --upload-file <Name>.xcframework.zip "<base>/<relative>/<Package>/<Version>/<Name>.xcframework.zip"`.
+  - On successful upload, the root `Package.swift` is rewritten to reference the hosted binaries with their computed checksums, replacing local source-based dependencies.
 
 ## Common Workflows
 - Remove a package completely
